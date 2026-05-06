@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Resident Ready</title>
+</head>
+
+<body>
+  <header>
+    <div class="header-content">
+      <div>
+        <h1 id="doctorDashboardHomeLink" class="dashboard-title-link" tabindex="0">
+          Resident Ready
+        </h1>
+        <p>
+          Board-readiness, clinical reasoning, and growth insights for residency training.
+        </p>
+      </div>
+
+      <div class="header-toggles">
+        <button id="themeToggleBtn" class="toggle-btn" type="button" aria-pressed="false">
+          <span class="toggle-track">
+            <span class="toggle-dot"></span>
+          </span>
+          <span class="toggle-label">Dark Mode</span>
+        </button>
+
+        <button id="fontToggleBtn" class="toggle-btn" type="button" aria-pressed="false">
+          <span class="toggle-track">
+            <span class="toggle-dot"></span>
+          </span>
+          <span class="toggle-label">Dyslexia Font</span>
+        </button>
+     
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Resident Dashboard / Landing View -->
+    <section id="launchView" class="app-view active-view">
+      <div class="card hero-card">
+        <h2>Resident Dashboard</h2>
+        <p id="residentHomeSummary">
+          Complete your first diagnostic to generate board-readiness feedback and targeted review data.
+        </p>
+
+        <div id="residentHomeStats" class="metric-row">
+          <div class="metric">
+            <strong id="homeScorePercent">--%</strong>
+            <span>Latest Diagnostic Score</span>
+          </div>
+
+          <div class="metric">
+            <strong id="homeRiskLevel">--</strong>
+            <span>Board Readiness Signal</span>
+          </div>
+
+          <div class="metric">
+            <strong id="homeQuestionCount">--</strong>
+            <span>Questions Completed</span>
+          </div>
+        </div>
+
+        <div class="button-row dashboard-actions-top">
+          <button id="startDiagnosticBtn">Start New Diagnostic</button>
+        </div>
+
+        <section id="residentLatestAttemptPanel" class="latest-attempt-panel hidden">
+          <div>
+            <p class="eyebrow-label">Latest Diagnostic</p>
+            <h3 id="latestAttemptTitle">No diagnostic completed yet</h3>
+            <p id="latestAttemptDetails">
+              Complete a diagnostic to unlock your saved board-readiness snapshot.
+            </p>
+          </div>
+
+          <div class="latest-attempt-actions">
+            <button id="reviewMissedFromDashboardBtn" class="secondary" type="button">
+              Review Missed
+            </button>
+            <button id="reviewFlaggedFromDashboardBtn" class="secondary" type="button">
+              Review Flagged
+            </button>
+            <button id="reviewFullFromDashboardBtn" class="secondary" type="button">
+              Review Full Diagnostic
+            </button>
+          </div>
+        </section>
+
+<div class="resident-dashboard-sections">
+  <section class="dashboard-card growth-insights-card">
+    <h3>Growth Insights</h3>
+    <div id="growthInsightsPanel" class="growth-insights-panel">
+      Complete more than one diagnostic to unlock growth insights.
+    </div>
+  </section>
+
+
+
+  <section class="dashboard-card">
+    <h3>Performance by System</h3>
+    <p class="dashboard-card-note">
+      Based only on the systems covered in your most recent diagnostic. Untested systems are not shown yet.
+    </p>
+    <div id="systemPerformanceChart" class="chart-list"></div>
+  </section>
+
+  <section class="dashboard-card">
+    <h3>Clinical Reasoning Breakdown</h3>
+    <div id="clinicalReasoningChart" class="chart-list"></div>
+  </section>
+
+  <section class="dashboard-card">
+    <h3>Top Error Patterns</h3>
+    <div id="errorPatternChart" class="chart-list"></div>
+  </section>
+
+  <section class="dashboard-card full-width">
+    <h3>Suggested Remediation</h3>
+    <div id="remediationList" class="remediation-list">
+      Complete a diagnostic to generate suggested review areas.
+    </div>
+  </section>
+
+  <section class="dashboard-card full-width practice-history-card">
+    <h3>Recent Targeted Practice</h3>
+    <p class="dashboard-card-note">
+      Review recent practice sets, track practice trends, or repeat a focus area when you want another short skill-building session.
+    </p>
+    <div id="residentPracticeHistoryList" class="attempt-history-list practice-history-list">
+      Complete a targeted practice set to begin building your practice history.
+    </div>
+  </section>
+
+  <section class="dashboard-card full-width">
+    <h3>Saved Diagnostic Attempt History</h3>
+    <div id="residentAttemptHistoryList" class="attempt-history-list">
+      Complete a diagnostic to begin building your attempt history.
+    </div>
+  </section>
+</div>
+
+
+
+      </div>
+    </section>
+
+    <!-- Resident Diagnostic Test View -->
+    <section id="testView" class="app-view">
+      <div class="card diagnostic-test-card">
+        <div class="test-header">
+          <p id="questionProgress">Question -- of --</p>
+
+ <div class="diagnostic-control-bar">
+    <div class="diagnostic-control-group">
+      <label for="questionJumpSelect">Jump to:</label>
+      <select id="questionJumpSelect" class="question-jump-select"></select>
+    </div>
+
+    <div class="diagnostic-timer-box">
+      <span id="diagnosticTimerLabel">Time:</span>
+      <strong id="diagnosticTimer">00:00</strong>
+      <button id="toggleTimerBtn" class="secondary small-btn" type="button">
+        Hide Timer
+      </button>
+    </div>
+
+    <button id="flagQuestionBtn" class="secondary flag-question-btn" type="button">
+      Flag for Review
+    </button>
+
+  </div>
+
+          <div class="question-tools-row">
+            <div class="highlight-toolbar" id="questionHighlightToolbar" aria-label="Question highlighting tools">
+              <span class="highlight-label">Question highlighter:</span>
+              <button type="button" class="hl-color-btn active" data-color="yellow" aria-label="Yellow highlighter"></button>
+              <button type="button" class="hl-color-btn" data-color="green" aria-label="Green highlighter"></button>
+              <button type="button" class="hl-color-btn" data-color="blue" aria-label="Blue highlighter"></button>
+              <button type="button" class="hl-color-btn" data-color="pink" aria-label="Pink highlighter"></button>
+            </div>
+
+            <button id="clearQuestionHighlightsBtn" class="secondary" type="button">
+              Clear Question Highlights
+            </button>
+
+            <span class="question-tools-hint">
+              Tip: select text to highlight. Shift-click or right-click an answer to strike it out.
+            </span>
+          </div>
+
+          <h2 id="questionStem"></h2>
+        </div>
+
+        <div id="answerChoices" class="answer-choice-list"></div>
+
+        <div class="notes-tool">
+          <label for="questionNotes">Notes</label>
+          <textarea id="questionNotes" placeholder="Type notes for this question..."></textarea>
+        </div>
+
+        <div id="answerFeedbackPanel" class="answer-feedback-panel hidden"></div>
+
+        <div class="button-row">
+          <button id="checkAnswerBtn">Check Answer</button>
+          <button id="nextQuestionBtn" class="secondary">Next Question</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resident Results View -->
+    <section id="residentResultsView" class="app-view">
+      <div class="card resident-results-card">
+        <div class="results-header">
+          <div>
+            <p id="residentResultsEyebrow" class="eyebrow-label">Diagnostic Complete</p>
+            <h2 id="residentResultsTitle">Resident Results</h2>
+            <p id="residentScoreLine" class="results-score-line"></p>
+          </div>
+
+          <div class="results-score-badge">
+            <span>Score</span>
+            <strong id="residentResultsScoreBadge">--%</strong>
+          </div>
+        </div>
+
+        <div class="results-metric-grid">
+          <div class="results-metric">
+            <span>Correct</span>
+            <strong id="residentResultsCorrectCount">--/--</strong>
+          </div>
+
+          <div class="results-metric">
+            <span>Total Time</span>
+            <strong id="residentResultsTotalTime">--</strong>
+          </div>
+
+          <div class="results-metric">
+            <span>Flagged</span>
+            <strong id="residentResultsFlaggedCount">--</strong>
+          </div>
+
+          <div class="results-metric">
+            <span>Missed</span>
+            <strong id="residentResultsMissedCount">--</strong>
+          </div>
+        </div>
+
+        <div class="results-summary-grid">
+          <section class="results-summary-box strengths-box">
+            <h3>Strongest Areas</h3>
+            <p id="residentStrengthsLine"></p>
+          </section>
+
+          <section class="results-summary-box priority-box">
+            <h3>Priority Review Areas</h3>
+            <p id="residentWeaknessesLine"></p>
+          </section>
+
+          <section class="results-summary-box reasoning-box full-width">
+            <h3>Clinical Reasoning Pattern</h3>
+            <p id="residentErrorLine"></p>
+          </section>
+        </div>
+
+        <div class="results-next-steps">
+          <h3>Recommended Next Step</h3>
+          <p>
+            Start with missed and flagged questions. Review the explanation, your notes,
+            and the clinical reasoning takeaway before moving into another diagnostic.
+          </p>
+        </div>
+
+        <div class="button-row results-button-row">
+          <button id="reviewMissedFromResultsBtn">Review Missed Questions</button>
+          <button id="reviewFlaggedFromResultsBtn" class="secondary">Review Flagged Questions</button>
+          <button id="reviewDiagnosticFromResultsBtn" class="secondary">Review Full Diagnostic</button>
+          <button id="backToResidentDashboardBtn" class="secondary">Back to Main Dashboard</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Faculty Dashboard View -->
+    <section id="facultyDashboardView" class="app-view">
+      <div class="dashboard-grid">
+        <section class="card">
+          <h2>Faculty Summary</h2>
+
+          <div class="metric-row">
+            <div class="metric">
+              <strong id="scorePercent">--%</strong>
+              <span>Diagnostic Score</span>
+            </div>
+
+            <div class="metric">
+              <strong id="questionCount">--</strong>
+              <span>Questions Completed</span>
+            </div>
+
+            <div class="metric">
+              <strong id="riskLevel">--</strong>
+              <span>Board Readiness Signal</span>
+            </div>
+          </div>
+
+          <h3 class="section-title">Strongest Areas</h3>
+          <div id="strengthTags" class="tag-list"></div>
+
+          <h3 class="section-title">Priority Review Areas</h3>
+          <div id="weaknessTags" class="tag-list"></div>
+
+          <h3 class="section-title">Clinical Decision Performance</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Clinical Decision</th>
+                  <th>Correct</th>
+                  <th>Total</th>
+                  <th>Accuracy</th>
+                </tr>
+              </thead>
+              <tbody id="clinicalDecisionTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="card">
+          <h2>Risk Alerts</h2>
+          <div id="riskAlerts"></div>
+
+          <h3 class="section-title">Top Error Patterns</h3>
+          <div id="errorTags" class="tag-list"></div>
+
+          <div class="button-row">
+            <button id="viewDiagnosticDetailsBtn" class="secondary">View Diagnostic Details</button>
+            <button id="backToResidentResultsBtn" class="secondary">Back to Resident Results</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Diagnostic Review View -->
+    <section id="diagnosticReviewView" class="app-view">
+      <div class="card">
+        <h2 id="diagnosticReviewTitle">Diagnostic Review</h2>
+        <p id="diagnosticReviewDescription">
+          Review each question, your answer, correct answer, and clinical reasoning insights.
+        </p>
+
+        <div id="diagnosticReviewList"></div>
+
+        <div class="button-row">
+          <button id="backToResidentResultsFromReviewBtn">Back to Resident Results</button>
+          <button id="backToResidentDashboardFromReviewBtn" class="secondary" type="button">
+            Back to Main Dashboard
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+  © 2026 McDonald Medical Education Solutions. All rights reserved.
+</footer>
+  <script src="data/med-content-catalog.js"></script>
+  <script src="data/sample-questions.js"></script>
+  <script src="shared/med-results-engine.js"></script>
+
+  <script src="resident/resident-dashboard-ui.js"></script>
+  <script src="resident/resident-test-ui.js"></script>
+
+  <script src="faculty/faculty-dashboard-ui.js"></script>
+  <script src="review/diagnostic-review-ui.js"></script>
+
+  <script src="app.js"></script>
+</body>
+</html>
