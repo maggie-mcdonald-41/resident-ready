@@ -182,12 +182,48 @@ window.App = {
     const attempts = this.getDiagnosticAttempts(memory);
 
     if (!attempts.length) {
-      historyList.innerHTML =
-        "Complete a diagnostic to begin building your attempt history.";
+      historyList.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Saved diagnostics will appear here.</strong>
+          <p>Complete a diagnostic to begin building your board-readiness history.</p>
+        </div>
+      `;
       return;
     }
 
-    historyList.innerHTML = attempts
+    const latestAttempt = attempts[0].scoredAttempt || {};
+    const oldestAttempt = attempts[attempts.length - 1].scoredAttempt || {};
+    const latestScore = Number(latestAttempt.percentCorrect || 0);
+    const oldestScore = Number(oldestAttempt.percentCorrect || 0);
+    const scoreChange = latestScore - oldestScore;
+
+    let trendMessage = "Complete another diagnostic to see your board-readiness trend.";
+
+    if (attempts.length >= 2) {
+      if (scoreChange > 0) {
+        trendMessage = `Your diagnostic score is up ${scoreChange} percentage point${scoreChange === 1 ? "" : "s"} across saved attempts.`;
+      } else if (scoreChange < 0) {
+        trendMessage = `Your latest diagnostic score dipped by ${Math.abs(scoreChange)} percentage point${Math.abs(scoreChange) === 1 ? "" : "s"}. Use missed and flagged questions to guide your next review.`;
+      } else {
+        trendMessage = "Your diagnostic score is holding steady across saved attempts. Keep using missed and flagged questions to sharpen your next review.";
+      }
+    }
+
+    const summaryHtml = `
+      <div class="diagnostic-history-summary">
+        <div>
+          <strong>Diagnostic History Snapshot</strong>
+          <p>${trendMessage}</p>
+        </div>
+
+        <div class="diagnostic-history-mini-metrics">
+          <span><strong>${attempts.length}</strong> saved diagnostic${attempts.length === 1 ? "" : "s"}</span>
+          <span><strong>${latestScore}%</strong> latest score</span>
+        </div>
+      </div>
+    `;
+
+    const historyHtml = attempts
       .map((record, index) => {
         const attempt = record.scoredAttempt;
         const total = attempt.totalQuestions || attempt.results?.length || 0;
@@ -196,30 +232,38 @@ window.App = {
         const totalTime = this.formatSeconds(attempt.totalTimeSeconds || 0);
         const savedAt = record.savedAt ? this.formatDate(record.savedAt) : "Saved attempt";
 
-            return `
-        <div class="attempt-history-item">
-          <div>
-            <strong>${index === 0 ? "Latest Attempt" : `Attempt ${attempts.length - index}`}</strong>
-            <span>${savedAt}</span>
-          </div>
+        return `
+          <div class="attempt-history-item diagnostic-history-item">
+            <div>
+              <strong>${index === 0 ? "Latest Diagnostic" : `Diagnostic ${attempts.length - index}`}</strong>
+              <span>${savedAt}</span>
+            </div>
 
-          <div>
-            <strong>${attempt.percentCorrect}%</strong>
-            <span>${correct}/${total} correct · ${totalTime} · ${flagged} flagged</span>
-          </div>
+            <div>
+              <strong>${attempt.percentCorrect}%</strong>
+              <span>${correct}/${total} correct · ${totalTime} · ${flagged} flagged</span>
+            </div>
 
-          <button
-            class="secondary attempt-review-btn"
-            type="button"
-            data-attempt-id="${record.id}"
-            aria-label="Review ${index === 0 ? "latest attempt" : `attempt ${attempts.length - index}`}"
-          >
-            Review Attempt
-          </button>
-        </div>
-      `;
+            <button
+              class="secondary attempt-review-btn"
+              type="button"
+              data-attempt-id="${record.id}"
+              aria-label="Review ${index === 0 ? "latest diagnostic" : `diagnostic ${attempts.length - index}`}"
+            >
+              Review Diagnostic
+            </button>
+          </div>
+        `;
       })
       .join("");
+
+    historyList.innerHTML = `
+      ${summaryHtml}
+      <div class="diagnostic-history-divider">Saved Diagnostic Attempts</div>
+      <div class="history-scroll-list diagnostic-attempt-scroll-list">
+        ${historyHtml}
+      </div>
+    `;
   },
 
   renderGrowthInsights() {
@@ -415,7 +459,9 @@ window.App = {
     historyList.innerHTML = `
       ${trendHtml}
       <div class="practice-history-divider">Recent Practice Attempts</div>
-      ${historyHtml}
+      <div class="history-scroll-list practice-attempt-scroll-list">
+        ${historyHtml}
+      </div>
     `;
   },
 

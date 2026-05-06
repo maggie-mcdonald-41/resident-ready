@@ -63,7 +63,7 @@ window.ResidentDashboardUI = {
     this.renderBarList("systemPerformanceChart", facultySummary.bySystem || []);
     this.renderBarList("clinicalReasoningChart", facultySummary.byClinicalDecision || []);
     this.renderBarList("errorPatternChart", facultySummary.byErrorType || [], true);
-    this.renderRemediation(facultySummary);
+    this.renderRemediation(facultySummary, scoredAttempt);
   },
 
   renderBarList(containerId, dataArray, countOnly = false) {
@@ -99,36 +99,19 @@ window.ResidentDashboardUI = {
     });
   },
 
-  renderRemediation(facultySummary) {
+  renderRemediation(facultySummary, scoredAttempt) {
     const container = document.getElementById("remediationList");
     if (!container) return;
 
-    const weakestSystems = (facultySummary.bySystem || []).slice(0, 2);
-    const weakestClinical = (facultySummary.byClinicalDecision || []).slice(0, 2);
-
-    const recommendations = [
-      ...weakestSystems.map((item) => {
-        const label = this.getResidentFriendlyLabel(item.tag);
-        return {
-          tag: item.tag,
-          label,
-          text: `Review ${label} cases and targeted board-style questions.`
-        };
-      }),
-      ...weakestClinical.map((item) => {
-        const label = this.getResidentFriendlyLabel(item.tag);
-        return {
-          tag: item.tag,
-          label,
-          text: `Practice clinical reasoning questions focused on ${label}.`
-        };
-      })
-    ].slice(0, 4);
+    const recommendations = this.buildRemediationRecommendations(facultySummary, scoredAttempt);
 
     container.innerHTML = recommendations.length
       ? recommendations.map((item) => `
           <div class="remediation-item">
-            <span>${item.text}</span>
+            <span>
+              <strong>${item.reason}</strong>
+              ${item.text}
+            </span>
             <button
               class="secondary small-btn start-practice-btn"
               type="button"
@@ -141,6 +124,152 @@ window.ResidentDashboardUI = {
         `).join("")
       : `<p class="empty-note">Complete a diagnostic to generate suggested review areas.</p>`;
   },
+
+  buildRemediationRecommendations(facultySummary, scoredAttempt) {
+    const recommendations = [];
+
+    const missedFlaggedTags = this.getMissedFlaggedTagRecommendations(scoredAttempt);
+    const weakestSystems = (facultySummary.bySystem || []).slice(0, 3);
+    const weakestClinical = (facultySummary.byClinicalDecision || []).slice(0, 3);
+    const topErrorPatterns = (facultySummary.byErrorType || []).slice(0, 2);
+
+    missedFlaggedTags.forEach((item) => {
+      const label = this.getResidentFriendlyLabel(item.tag);
+
+      recommendations.push({
+        tag: item.tag,
+        label,
+        priority: 1,
+        reason: "Recommended from your missed or flagged questions.",
+        text: ` Focus practice on ${label} to strengthen a pattern from your latest diagnostic.`
+      });
+    });
+
+    weakestSystems.forEach((item) => {
+      const label = this.getResidentFriendlyLabel(item.tag);
+
+      recommendations.push({
+        tag: item.tag,
+        label,
+        priority: 2,
+        reason: "Recommended from your system performance.",
+        text: ` Review ${label} cases and targeted board-style questions.`
+      });
+    });
+
+    weakestClinical.forEach((item) => {
+      const label = this.getResidentFriendlyLabel(item.tag);
+
+      recommendations.push({
+        tag: item.tag,
+        label,
+        priority: 3,
+        reason: "Recommended from your clinical reasoning breakdown.",
+        text: ` Practice questions focused on ${label}.`
+      });
+    });
+
+    topErrorPatterns.forEach((item) => {
+      const label = this.getResidentFriendlyLabel(item.tag);
+
+      recommendations.push({
+        tag: item.tag,
+        label,
+        priority: 4,
+        reason: "Recommended from your error patterns.",
+        text: ` Review explanations connected to ${label} so you can recognize this pattern sooner.`
+      });
+    });
+
+    return this.dedupeRecommendations(recommendations)
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, 4);
+  },
+
+  getMissedFlaggedTagRecommendations(scoredAttempt) {
+    const tagCounts = {};
+    const questionBank = this.getQuestionBank();
+    const flaggedQuestions = scoredAttempt?.flaggedQuestions || {};
+
+    (scoredAttempt?.results || []).forEach((result) => {
+      const wasMissed = !result.isCorrect;
+      const wasFlagged = !!flaggedQuestions[result.questionId];
+
+      if (!wasMissed && !wasFlagged) return;
+
+      const question = questionBank.find((item) => item.id === result.questionId);
+      if (!question?.tags) return;
+
+      const preferredTags = this.getPreferredPracticeTags(question.tags);
+
+      preferredTags.forEach((tag) => {
+        if (!tagCounts[tag]) {
+          tagCounts[tag] = {
+            tag,
+            count: 0
+          };
+        }
+
+        tagCounts[tag].count += wasMissed && wasFlagged ? 2 : 1;
+      });
+    });
+
+    return Object.values(tagCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+  },
+
+  getPreferredPracticeTags(tags) {
+    const preferredOrder = [
+      "clinicalDecision",
+      "clinicalTask",
+      "system",
+      "topic",
+      "subtopic",
+      "competency",
+      "errorType"
+    ];
+
+    const selectedTags = [];
+
+    preferredOrder.forEach((key) => {
+      const value = tags[key];
+
+      if (Array.isArray(value)) {
+        selectedTags.push(...value);
+      } else if (typeof value === "string") {
+        selectedTags.push(value);
+      }
+    });
+
+    return Array.from(new Set(selectedTags)).filter(Boolean).slice(0, 3);
+  },
+
+  dedupeRecommendations(recommendations) {
+    const seenTags = new Set();
+
+    return recommendations.filter((item) => {
+      if (!item.tag || seenTags.has(item.tag)) {
+        return false;
+      }
+
+      seenTags.add(item.tag);
+      return true;
+    });
+  },
+
+  getQuestionBank() {
+    if (window.ResidentQuestionSource && typeof window.ResidentQuestionSource.getAllQuestions === "function") {
+      return window.ResidentQuestionSource.getAllQuestions();
+    }
+
+    if (window.ResidentTestUI && typeof window.ResidentTestUI.getDefaultQuestionBank === "function") {
+      return window.ResidentTestUI.getDefaultQuestionBank();
+    }
+
+    return window.MED_SAMPLE_QUESTIONS || [];
+  },
+
 
   escapeAttribute(value) {
     return String(value || "")

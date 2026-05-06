@@ -1391,13 +1391,65 @@ body.dark-mode .growth-insight-box > strong {
   flex-wrap: wrap;
 }
 
-.practice-history-divider {
+.practice-history-divider,
+.diagnostic-history-divider {
   margin: 8px 0 10px;
   font-size: 0.85rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--blue-slate);
+}
+
+.diagnostic-history-summary,
+.diagnostic-history-empty-state {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  border-left: 8px solid var(--dusty-denim);
+}
+
+.diagnostic-history-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.diagnostic-history-summary strong,
+.diagnostic-history-empty-state strong {
+  color: var(--blue-slate);
+}
+
+.diagnostic-history-summary p,
+.diagnostic-history-empty-state p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.diagnostic-history-mini-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 220px;
+}
+
+.diagnostic-history-mini-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.12);
+  font-size: 0.88rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.diagnostic-history-item {
+  border-left: 8px solid var(--blue-slate);
 }
 
 .practice-empty-state,
@@ -1450,8 +1502,20 @@ body.dark-mode .practice-insight-summary span,
 body.dark-mode .practice-insight-summary strong,
 body.dark-mode .practice-insight-next-step strong,
 body.dark-mode .practice-empty-state strong,
-body.dark-mode .practice-history-divider {
+body.dark-mode .practice-history-divider,
+body.dark-mode .diagnostic-history-divider,
+body.dark-mode .diagnostic-history-summary strong,
+body.dark-mode .diagnostic-history-empty-state strong {
   color: var(--eggshell);
+}
+
+body.dark-mode .diagnostic-history-summary,
+body.dark-mode .diagnostic-history-empty-state {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .diagnostic-history-mini-metrics span {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 @media (max-width: 760px) {
@@ -1737,6 +1801,48 @@ body.dark-mode .results-metric span {
   gap: 10px;
 }
 
+.history-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scroll-behavior: smooth;
+}
+
+.history-scroll-list:focus-within {
+  outline: 3px solid rgba(120, 0, 0, 0.22);
+  outline-offset: 4px;
+  border-radius: var(--radius-md);
+}
+
+.practice-attempt-scroll-list {
+  max-height: 340px;
+}
+
+.diagnostic-attempt-scroll-list {
+  max-height: 360px;
+}
+
+.history-scroll-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.history-scroll-list::-webkit-scrollbar-track {
+  background: rgba(116, 140, 171, 0.12);
+  border-radius: 999px;
+}
+
+.history-scroll-list::-webkit-scrollbar-thumb {
+  background: rgba(62, 92, 118, 0.45);
+  border-radius: 999px;
+}
+
+.history-scroll-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(62, 92, 118, 0.68);
+}
+
 .attempt-history-item {
   display: flex;
   justify-content: space-between;
@@ -1765,6 +1871,18 @@ body.dark-mode .results-metric span {
 body.dark-mode .latest-attempt-panel,
 body.dark-mode .attempt-history-item {
   background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .history-scroll-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .history-scroll-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+body.dark-mode .history-scroll-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .practice-history-item {
@@ -2016,6 +2134,21 @@ body.dark-mode .app-footer {
 
   .attempt-history-item {
     flex-direction: column;
+  }
+
+  .history-scroll-list {
+    max-height: 420px;
+    padding-right: 4px;
+  }
+
+  .diagnostic-history-summary {
+    flex-direction: column;
+  }
+
+  .diagnostic-history-mini-metrics {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
   }
 }
 

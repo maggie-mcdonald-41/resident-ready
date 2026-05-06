@@ -117,7 +117,38 @@ window.ResidentTestUI = {
       this.questionMatchesFocusTag(question, focusTag)
     );
 
-    return exactMatches.slice(0, maxQuestions);
+    if (!exactMatches.length) {
+      return [];
+    }
+
+    const priorityQuestionIds = this.getPriorityPracticeQuestionIds(focusTag);
+    const recentlyPracticedIds = this.getRecentlyPracticedQuestionIds(focusTag);
+
+    const priorityQuestions = this.shuffleQuestions(
+      exactMatches.filter((question) => priorityQuestionIds.has(question.id))
+    );
+
+    const freshQuestions = this.shuffleQuestions(
+      exactMatches.filter((question) =>
+        !priorityQuestionIds.has(question.id) &&
+        !recentlyPracticedIds.has(question.id)
+      )
+    );
+
+    const recentFallbackQuestions = this.shuffleQuestions(
+      exactMatches.filter((question) =>
+        !priorityQuestionIds.has(question.id) &&
+        recentlyPracticedIds.has(question.id)
+      )
+    );
+
+    const orderedQuestions = [
+      ...priorityQuestions,
+      ...freshQuestions,
+      ...recentFallbackQuestions
+    ];
+
+    return this.getUniqueQuestions(orderedQuestions).slice(0, maxQuestions);
   },
 
   questionMatchesFocusTag(question, focusTag) {
@@ -134,6 +165,82 @@ window.ResidentTestUI = {
     });
 
     return tagValues.includes(focusTag);
+  },
+
+  getPriorityPracticeQuestionIds(focusTag) {
+    const priorityIds = new Set();
+    const latestAttempt = window.latestScoredAttempt;
+
+    if (!latestAttempt || latestAttempt.type === "practice") {
+      return priorityIds;
+    }
+
+    const questionBank = this.getDefaultQuestionBank();
+    const flaggedQuestions = latestAttempt.flaggedQuestions || {};
+
+    (latestAttempt.results || []).forEach((result) => {
+      const question = questionBank.find((item) => item.id === result.questionId);
+      if (!question || !this.questionMatchesFocusTag(question, focusTag)) return;
+
+      const wasMissed = !result.isCorrect;
+      const wasFlagged = !!flaggedQuestions[result.questionId];
+
+      if (wasMissed || wasFlagged) {
+        priorityIds.add(result.questionId);
+      }
+    });
+
+    return priorityIds;
+  },
+
+  getRecentlyPracticedQuestionIds(focusTag) {
+    const recentIds = new Set();
+
+    if (!window.App || typeof window.App.getPracticeAttempts !== "function") {
+      return recentIds;
+    }
+
+    const practiceAttempts = window.App.getPracticeAttempts();
+
+    practiceAttempts
+      .filter((record) => {
+        const recordFocusTag = record.focusTag || record.scoredAttempt?.focusTag;
+        return recordFocusTag === focusTag;
+      })
+      .slice(0, 2)
+      .forEach((record) => {
+        (record.scoredAttempt?.results || []).forEach((result) => {
+          if (result.questionId) {
+            recentIds.add(result.questionId);
+          }
+        });
+      });
+
+    return recentIds;
+  },
+
+  shuffleQuestions(questions) {
+    const shuffled = [...questions];
+
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+    }
+
+    return shuffled;
+  },
+
+  getUniqueQuestions(questions) {
+    const seenIds = new Set();
+
+    return questions.filter((question) => {
+      if (!question?.id || seenIds.has(question.id)) {
+        return false;
+      }
+
+      seenIds.add(question.id);
+      return true;
+    });
   },
 
   getCurrentQuestionId() {
