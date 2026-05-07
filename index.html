@@ -35,15 +35,27 @@
         </button>
 
         <div class="header-google-auth-box">
-          <div>
-            <strong>Account</strong>
-            <p id="googleSignInStatus">
-              Not signed in with Google yet. Profile and attempts are currently saved locally on this device.
-            </p>
+          <div class="header-account-status-stack">
+            <div>
+              <strong>Account</strong>
+              <p id="googleSignInStatus">
+                Not signed in with Google yet. Profile and attempts are currently saved locally on this device.
+              </p>
+            </div>
+
+            <div class="header-drive-status">
+              <strong>Drive Save</strong>
+              <p id="googleDriveSaveStatus">
+                Not connected yet.
+              </p>
+            </div>
           </div>
 
           <div class="header-google-auth-actions">
             <div id="googleSignInButton"></div>
+            <button id="connectDriveSaveBtn" class="secondary hidden" type="button">
+              Connect Drive Save
+            </button>
             <button id="googleSignOutBtn" class="secondary hidden" type="button">
               Sign Out
             </button>

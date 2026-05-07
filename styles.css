@@ -70,11 +70,22 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 430px;
+  max-width: 520px;
   padding: 10px 12px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.26);
+}
+
+.header-account-status-stack {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.header-drive-status {
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .header-google-auth-box strong {
@@ -94,8 +105,10 @@
 .header-google-auth-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .header-google-auth-actions button {
@@ -2443,7 +2456,8 @@ body.dark-mode .app-footer {
     justify-content: stretch;
   }
 
-  .header-google-auth-actions button {
+  .header-google-auth-actions button,
+  .header-google-auth-actions > div {
     width: 100%;
   }
 

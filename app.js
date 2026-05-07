@@ -2,6 +2,11 @@
 
 window.App = {
   GOOGLE_CLIENT_ID: "333668105417-bljp17q4m7ur52pq3hmj1nr4f8r468rn.apps.googleusercontent.com",
+  GOOGLE_DRIVE_SCOPE: "https://www.googleapis.com/auth/drive.file",
+  driveTokenClient: null,
+  driveAccessToken: null,
+  driveTokenExpiresAt: null,
+  driveAuthorizationInProgress: false,
   showView(viewId) {
     document.querySelectorAll(".app-view").forEach((view) => {
       view.classList.remove("active-view");
@@ -366,6 +371,10 @@ window.App = {
     }
 
     this.saveGoogleIdentityToProfile(googleProfile);
+
+    // After sign-in succeeds, immediately begin the Drive Save authorization flow.
+    // Google may still show a separate consent screen because Drive access is a separate scope.
+    this.requestDriveAccess({ autoAfterSignIn: true });
   },
 
   decodeGoogleCredential(credential) {
@@ -423,11 +432,165 @@ window.App = {
 
     this.saveResidentMemory(memory);
 
+    this.disconnectDriveSave();
+
     if (window.google && window.google.accounts && window.google.accounts.id) {
       window.google.accounts.id.disableAutoSelect();
     }
 
     this.renderResidentHome();
+  },
+
+    initDriveAuthorization() {
+    this.renderDriveSaveState();
+
+    if (!this.isGoogleClientConfigured()) {
+      return;
+    }
+
+    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+      setTimeout(() => this.initDriveAuthorization(), 300);
+      return;
+    }
+
+    this.driveTokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: this.GOOGLE_CLIENT_ID,
+      scope: this.GOOGLE_DRIVE_SCOPE,
+      callback: (response) => this.handleDriveTokenResponse(response),
+      error_callback: (error) => {
+        console.warn("[Resident Ready] Drive authorization error.", error);
+        this.driveAuthorizationInProgress = false;
+        this.driveAccessToken = null;
+        this.driveTokenExpiresAt = null;
+        this.renderDriveSaveState("Drive authorization was cancelled or did not complete. Use Connect Drive Save to try again.");
+      }
+    });
+
+    this.renderDriveSaveState();
+  },
+
+  requestDriveAccess(options = {}) {
+    const profile = this.getResidentProfile();
+    const isAutomatic = !!options.autoAfterSignIn;
+
+    if (!profile?.authProvider || profile.authProvider !== "google" || !profile.email) {
+      if (!isAutomatic) {
+        alert("Please sign in with Google before connecting Drive Save.");
+      }
+
+      this.renderDriveSaveState("Sign in with Google first.");
+      return;
+    }
+
+    if (!this.driveTokenClient) {
+      this.initDriveAuthorization();
+    }
+
+    if (!this.driveTokenClient) {
+      if (!isAutomatic) {
+        alert("Drive authorization is still loading. Please try again in a moment.");
+      }
+
+      this.renderDriveSaveState("Drive authorization is still loading. Please try again in a moment.");
+      return;
+    }
+
+    this.driveAuthorizationInProgress = true;
+    this.renderDriveSaveState("Requesting Drive Save permission...");
+
+    this.driveTokenClient.requestAccessToken({
+      prompt: this.hasValidDriveAccessToken() ? "" : "consent"
+    });
+  },
+
+  handleDriveTokenResponse(response) {
+    this.driveAuthorizationInProgress = false;
+
+    if (!response || response.error) {
+      console.warn("[Resident Ready] Drive token response error.", response);
+      this.driveAccessToken = null;
+      this.driveTokenExpiresAt = null;
+      this.renderDriveSaveState("Drive authorization did not complete. Use Connect Drive Save to try again.");
+      return;
+    }
+
+    if (!response.access_token) {
+      this.driveAccessToken = null;
+      this.driveTokenExpiresAt = null;
+      this.renderDriveSaveState("Drive authorization did not return an access token. Use Connect Drive Save to try again.");
+      return;
+    }
+
+    const expiresInSeconds = Number(response.expires_in || 3600);
+
+    this.driveAccessToken = response.access_token;
+    this.driveTokenExpiresAt = Date.now() + expiresInSeconds * 1000;
+
+    this.renderDriveSaveState("Drive Save connected for this session.");
+  },
+
+  hasValidDriveAccessToken() {
+    return !!(
+      this.driveAccessToken &&
+      this.driveTokenExpiresAt &&
+      Date.now() < this.driveTokenExpiresAt - 60000
+    );
+  },
+
+  disconnectDriveSave() {
+    if (
+      this.driveAccessToken &&
+      window.google &&
+      window.google.accounts &&
+      window.google.accounts.oauth2 &&
+      typeof window.google.accounts.oauth2.revoke === "function"
+    ) {
+      window.google.accounts.oauth2.revoke(this.driveAccessToken, () => {
+        console.log("[Resident Ready] Drive token revoked.");
+      });
+    }
+
+    this.driveAuthorizationInProgress = false;
+    this.driveAccessToken = null;
+    this.driveTokenExpiresAt = null;
+    this.renderDriveSaveState();
+  },
+
+  renderDriveSaveState(customMessage = "") {
+    const status = document.getElementById("googleDriveSaveStatus");
+    const connectBtn = document.getElementById("connectDriveSaveBtn");
+
+    if (!status || !connectBtn) return;
+
+    const profile = this.getResidentProfile();
+
+    if (!this.isGoogleClientConfigured()) {
+      status.textContent = "Add your Google Web Client ID before connecting Drive Save.";
+      connectBtn.classList.add("hidden");
+      return;
+    }
+
+    if (!profile?.authProvider || profile.authProvider !== "google" || !profile.email) {
+      status.textContent = "Sign in with Google first.";
+      connectBtn.classList.add("hidden");
+      return;
+    }
+
+    if (this.driveAuthorizationInProgress) {
+      status.textContent = customMessage || "Requesting Drive Save permission...";
+      connectBtn.classList.add("hidden");
+      return;
+    }
+
+    if (this.hasValidDriveAccessToken()) {
+      status.textContent = customMessage || "Drive Save connected for this session.";
+      connectBtn.classList.add("hidden");
+      return;
+    }
+
+    status.textContent = customMessage || "Drive Save needs permission.";
+    connectBtn.textContent = "Connect Drive Save";
+    connectBtn.classList.remove("hidden");
   },
 
   renderGoogleSignInState() {
@@ -445,6 +608,7 @@ window.App = {
 
       signOutBtn.classList.remove("hidden");
       buttonContainer.innerHTML = "";
+      this.renderDriveSaveState();
       return;
     }
 
@@ -454,6 +618,7 @@ window.App = {
 
     signOutBtn.classList.add("hidden");
     this.renderGoogleSignInButton();
+    this.renderDriveSaveState();
   },
 
 
@@ -1074,6 +1239,7 @@ init() {
   this.loadSavedResidentData();
   this.renderResidentHome();
   this.initGoogleSignIn();
+  this.initDriveAuthorization();
 
   const startBtn = document.getElementById("startDiagnosticBtn");
   if (startBtn) {
@@ -1111,7 +1277,14 @@ init() {
     });
   }
 
-    const googleSignOutBtn = document.getElementById("googleSignOutBtn");
+  const connectDriveSaveBtn = document.getElementById("connectDriveSaveBtn");
+  if (connectDriveSaveBtn) {
+    connectDriveSaveBtn.addEventListener("click", () => {
+      this.requestDriveAccess();
+    });
+  }
+
+  const googleSignOutBtn = document.getElementById("googleSignOutBtn");
   if (googleSignOutBtn) {
     googleSignOutBtn.addEventListener("click", () => {
       const shouldSignOut = window.confirm(
