@@ -63,6 +63,49 @@
   gap: 14px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.header-google-auth-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 430px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+}
+
+.header-google-auth-box strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--white);
+  font-size: 0.9rem;
+}
+
+.header-google-auth-box p {
+  margin: 0;
+  color: var(--eggshell);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.header-google-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-google-auth-actions button {
+  padding: 9px 12px;
+  font-size: 0.82rem;
+}
+
+.header-google-auth-actions .google-auth-placeholder {
+  margin: 0;
+  color: var(--eggshell);
 }
 
 .toggle-btn {
@@ -385,24 +428,31 @@ body.dark-mode .remediation-item {
     }
 
     @media (max-width: 900px) {
-      .dashboard-grid,
-      .metric-row {
-        grid-template-columns: 1fr;
-      }
+  .dashboard-grid,
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
 
-      main {
-        padding: 18px;
-      }
+  main {
+    padding: 18px;
+  }
 
-      .header-content {
-  flex-direction: column;
-  align-items: flex-start;
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-toggles {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .header-google-auth-box {
+    width: 100%;
+    max-width: none;
+    justify-content: space-between;
+  }
 }
-
-.header-toggles {
-  justify-content: flex-start;
-}
-    }
 
     .app-view {
   display: none;
@@ -1767,6 +1817,50 @@ body.dark-mode .results-metric span {
   gap: 10px;
 }
 
+.resident-google-auth-box {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.resident-google-auth-box strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--blue-slate);
+}
+
+.resident-google-auth-box p {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.resident-google-auth-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.google-auth-placeholder {
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.12);
+  color: var(--blue-slate);
+  font-weight: 800;
+}
+
+.google-auth-placeholder code {
+  font-family: Consolas, Monaco, monospace;
+}
+
 .resident-profile-form-view {
   display: grid;
   gap: 16px;
@@ -1825,6 +1919,20 @@ body.dark-mode .resident-profile-chips span {
   color: var(--eggshell);
 }
 
+body.dark-mode .resident-google-auth-box {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .resident-google-auth-box strong,
+body.dark-mode .google-auth-placeholder {
+  color: var(--eggshell);
+}
+
+body.dark-mode .google-auth-placeholder {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 body.dark-mode .resident-profile-form-grid input,
 body.dark-mode .resident-profile-form-grid select {
   background: var(--ink-black);
@@ -1840,15 +1948,19 @@ body.dyslexia-font .resident-profile-form-grid select {
 }
 
 @media (max-width: 800px) {
-  .resident-profile-summary-view {
+  .resident-profile-summary-view,
+  .resident-google-auth-box {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .resident-profile-actions {
+  .resident-profile-actions,
+  .resident-google-auth-actions {
     width: 100%;
   }
 
-  .resident-profile-actions button {
+  .resident-profile-actions button,
+  .resident-google-auth-actions button {
     width: 100%;
   }
 
@@ -2319,6 +2431,20 @@ body.dark-mode .app-footer {
   .toggle-btn {
     flex: 1 1 190px;
     justify-content: center;
+  }
+
+  .header-google-auth-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-google-auth-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .header-google-auth-actions button {
+    width: 100%;
   }
 
   .metric-row {

@@ -1,6 +1,7 @@
 //app.js
 
 window.App = {
+  GOOGLE_CLIENT_ID: "333668105417-bljp17q4m7ur52pq3hmj1nr4f8r468rn.apps.googleusercontent.com",
   showView(viewId) {
     document.querySelectorAll(".app-view").forEach((view) => {
       view.classList.remove("active-view");
@@ -140,6 +141,9 @@ window.App = {
       authProvider: existingProfile.authProvider || "local",
       userId: existingProfile.userId || null,
       email: existingProfile.email || null,
+      pictureUrl: existingProfile.pictureUrl || null,
+      googleName: existingProfile.googleName || null,
+      googleCredentialSavedAt: existingProfile.googleCredentialSavedAt || null,
       updatedAt: new Date().toISOString()
     };
 
@@ -176,6 +180,8 @@ window.App = {
 
       if (setupBtn) setupBtn.classList.remove("hidden");
       if (editBtn) editBtn.classList.add("hidden");
+
+      this.renderGoogleSignInState();
       return;
     }
 
@@ -196,6 +202,8 @@ window.App = {
 
     if (setupBtn) setupBtn.classList.add("hidden");
     if (editBtn) editBtn.classList.remove("hidden");
+
+    this.renderGoogleSignInState();
   },
 
   openResidentProfileForm() {
@@ -248,6 +256,10 @@ window.App = {
 
     const chips = [];
 
+    if (profile.authProvider === "google" && profile.email) {
+      chips.push("Google connected");
+    }
+
     if (profile.specialtyTrack) chips.push(profile.specialtyTrack);
     if (profile.programYear) chips.push(profile.programYear);
     if (profile.boardGoal) chips.push(profile.boardGoal);
@@ -272,6 +284,176 @@ window.App = {
     }
 
     return `${greeting}Complete your first diagnostic to generate board-readiness feedback and targeted review data.`;
+  },
+
+
+  isGoogleClientConfigured() {
+    return !!(
+      this.GOOGLE_CLIENT_ID &&
+      this.GOOGLE_CLIENT_ID !== "PASTE_YOUR_GOOGLE_WEB_CLIENT_ID_HERE"
+    );
+  },
+
+  initGoogleSignIn() {
+    if (!this.isGoogleClientConfigured()) {
+      this.renderGoogleSignInState();
+      return;
+    }
+
+    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+      setTimeout(() => this.initGoogleSignIn(), 300);
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: this.GOOGLE_CLIENT_ID,
+      callback: (response) => this.handleGoogleCredentialResponse(response)
+    });
+
+    this.renderGoogleSignInButton();
+    this.renderGoogleSignInState();
+  },
+
+  renderGoogleSignInButton() {
+    const buttonContainer = document.getElementById("googleSignInButton");
+    if (!buttonContainer) return;
+
+    buttonContainer.innerHTML = "";
+
+    const profile = this.getResidentProfile();
+
+    if (profile?.authProvider === "google" && profile?.email) {
+      return;
+    }
+
+    if (!this.isGoogleClientConfigured()) {
+      buttonContainer.innerHTML = `
+        <p class="google-auth-placeholder">
+          Add your Google Web Client ID in <code>app.js</code> to enable sign-in.
+        </p>
+      `;
+      return;
+    }
+
+    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+      buttonContainer.innerHTML = `
+        <p class="google-auth-placeholder">Loading Google sign-in...</p>
+      `;
+      return;
+    }
+
+    window.google.accounts.id.renderButton(buttonContainer, {
+      theme: "outline",
+      size: "large",
+      type: "standard",
+      shape: "pill",
+      text: "continue_with",
+      logo_alignment: "left"
+    });
+  },
+
+  handleGoogleCredentialResponse(response) {
+    if (!response || !response.credential) {
+      alert("Google sign-in did not return a credential. Please try again.");
+      return;
+    }
+
+    const googleProfile = this.decodeGoogleCredential(response.credential);
+
+    if (!googleProfile || !googleProfile.sub) {
+      alert("Resident Ready could not read your Google profile. Please try again.");
+      return;
+    }
+
+    this.saveGoogleIdentityToProfile(googleProfile);
+  },
+
+  decodeGoogleCredential(credential) {
+    try {
+      const payload = credential.split(".")[1];
+      const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const decodedPayload = decodeURIComponent(
+        atob(normalizedPayload)
+          .split("")
+          .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
+          .join("")
+      );
+
+      return JSON.parse(decodedPayload);
+    } catch (error) {
+      console.warn("[Resident Ready] Could not decode Google credential.", error);
+      return null;
+    }
+  },
+
+  saveGoogleIdentityToProfile(googleProfile) {
+    const memory = this.getResidentMemory();
+    const existingProfile = memory.profile || {};
+
+    memory.profile = {
+      ...existingProfile,
+      displayName: existingProfile.displayName || googleProfile.name || "",
+      authProvider: "google",
+      userId: googleProfile.sub || null,
+      email: googleProfile.email || null,
+      pictureUrl: googleProfile.picture || null,
+      googleName: googleProfile.name || null,
+      googleCredentialSavedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.saveResidentMemory(memory);
+    this.renderResidentHome();
+  },
+
+  signOutGoogleIdentity() {
+    const memory = this.getResidentMemory();
+    const existingProfile = memory.profile || {};
+
+    memory.profile = {
+      ...existingProfile,
+      authProvider: "local",
+      userId: null,
+      email: null,
+      pictureUrl: null,
+      googleName: null,
+      googleCredentialSavedAt: null,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.saveResidentMemory(memory);
+
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      window.google.accounts.id.disableAutoSelect();
+    }
+
+    this.renderResidentHome();
+  },
+
+  renderGoogleSignInState() {
+    const status = document.getElementById("googleSignInStatus");
+    const signOutBtn = document.getElementById("googleSignOutBtn");
+    const buttonContainer = document.getElementById("googleSignInButton");
+
+    if (!status || !signOutBtn || !buttonContainer) return;
+
+    const profile = this.getResidentProfile();
+
+    if (profile?.authProvider === "google" && profile?.email) {
+      status.textContent =
+        `Signed in as ${profile.email}. Drive saving will be added next.`;
+
+      signOutBtn.classList.remove("hidden");
+      buttonContainer.innerHTML = "";
+      return;
+    }
+
+    status.textContent = this.isGoogleClientConfigured()
+      ? "Sign in with Google to connect this device."
+      : "Add your Google Web Client ID in app.js to enable sign-in.";
+
+    signOutBtn.classList.add("hidden");
+    this.renderGoogleSignInButton();
   },
 
 
@@ -891,6 +1073,7 @@ window.App = {
 init() {
   this.loadSavedResidentData();
   this.renderResidentHome();
+  this.initGoogleSignIn();
 
   const startBtn = document.getElementById("startDiagnosticBtn");
   if (startBtn) {
@@ -925,6 +1108,19 @@ init() {
   if (cancelResidentProfileBtn) {
     cancelResidentProfileBtn.addEventListener("click", () => {
       this.closeResidentProfileForm();
+    });
+  }
+
+    const googleSignOutBtn = document.getElementById("googleSignOutBtn");
+  if (googleSignOutBtn) {
+    googleSignOutBtn.addEventListener("click", () => {
+      const shouldSignOut = window.confirm(
+        "Sign out of Google on this device? Your local Resident Ready profile and attempts will stay saved in this browser."
+      );
+
+      if (!shouldSignOut) return;
+
+      this.signOutGoogleIdentity();
     });
   }
 

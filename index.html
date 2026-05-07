@@ -33,6 +33,22 @@
           </span>
           <span class="toggle-label">Dyslexia Font</span>
         </button>
+
+        <div class="header-google-auth-box">
+          <div>
+            <strong>Account</strong>
+            <p id="googleSignInStatus">
+              Not signed in with Google yet. Profile and attempts are currently saved locally on this device.
+            </p>
+          </div>
+
+          <div class="header-google-auth-actions">
+            <div id="googleSignInButton"></div>
+            <button id="googleSignOutBtn" class="secondary hidden" type="button">
+              Sign Out
+            </button>
+          </div>
+        </div>
      
       </div>
     </div>
@@ -458,6 +474,8 @@
   <footer class="app-footer">
   © 2026 McDonald Medical Education Solutions. All rights reserved.
 </footer>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <script src="data/med-content-catalog.js"></script>
   <script src="data/sample-questions.js"></script>
   <script src="shared/med-results-engine.js"></script>
