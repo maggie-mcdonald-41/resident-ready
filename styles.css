@@ -1374,7 +1374,6 @@ body.dark-mode .growth-insight-box > strong {
    TARGETED PRACTICE INSIGHTS
    ========================================================= */
 
-.practice-insights-panel,
 .practice-history-trend-grid {
   display: grid;
   gap: 12px;
@@ -1453,7 +1452,6 @@ body.dark-mode .growth-insight-box > strong {
 }
 
 .practice-empty-state,
-.practice-insight-summary,
 .practice-insight-next-step {
   padding: 14px;
   border-radius: var(--radius-md);
@@ -1461,31 +1459,15 @@ body.dark-mode .growth-insight-box > strong {
   border: 1px solid rgba(62, 92, 118, 0.16);
 }
 
-.practice-insight-summary {
-  border-left: 8px solid var(--dusty-denim);
-}
-
 .practice-insight-next-step {
   border-left: 8px solid var(--success);
 }
 
-.practice-insight-summary span {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 0.85rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--blue-slate);
-}
-
-.practice-insight-summary strong,
 .practice-insight-next-step strong,
 .practice-empty-state strong {
   color: var(--blue-slate);
 }
 
-.practice-insight-summary p,
 .practice-insight-next-step p,
 .practice-empty-state p {
   margin-bottom: 0;
@@ -1493,13 +1475,10 @@ body.dark-mode .growth-insight-box > strong {
 }
 
 body.dark-mode .practice-empty-state,
-body.dark-mode .practice-insight-summary,
 body.dark-mode .practice-insight-next-step {
   background: rgba(255, 255, 255, 0.08);
 }
 
-body.dark-mode .practice-insight-summary span,
-body.dark-mode .practice-insight-summary strong,
 body.dark-mode .practice-insight-next-step strong,
 body.dark-mode .practice-empty-state strong,
 body.dark-mode .practice-history-divider,
@@ -1733,6 +1712,150 @@ body.dark-mode .results-metric span {
 /* =========================================================
    RESIDENT DASHBOARD 2.0 + LOCAL MEMORY
    ========================================================= */
+/* =========================================================
+   RESIDENT PROFILE MEMORY
+   ========================================================= */
+
+.resident-profile-card {
+  margin: 18px 0 22px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.14);
+  border: 2px solid rgba(62, 92, 118, 0.16);
+}
+
+.resident-profile-summary-view {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.resident-profile-summary-view h3,
+.resident-profile-form-view h3 {
+  margin: 0 0 6px;
+  color: var(--deep-space);
+}
+
+.resident-profile-summary-view p,
+.resident-profile-form-view p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.resident-profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.resident-profile-chips span {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.12);
+  color: var(--blue-slate);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.resident-profile-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.resident-profile-form-view {
+  display: grid;
+  gap: 16px;
+}
+
+.resident-profile-form-view.hidden {
+  display: none;
+}
+
+.resident-profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.resident-profile-form-grid label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.resident-profile-form-grid label.full-width {
+  grid-column: 1 / -1;
+}
+
+.resident-profile-form-grid input,
+.resident-profile-form-grid select {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 1rem;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.resident-profile-form-actions {
+  margin-top: 0;
+}
+
+body.dark-mode .resident-profile-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .resident-profile-summary-view h3,
+body.dark-mode .resident-profile-form-view h3,
+body.dark-mode .resident-profile-form-grid label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .resident-profile-chips span {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--eggshell);
+}
+
+body.dark-mode .resident-profile-form-grid input,
+body.dark-mode .resident-profile-form-grid select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dyslexia-font .resident-profile-form-grid input,
+body.dyslexia-font .resident-profile-form-grid select {
+  font-family: "OpenDyslexic", Verdana, Arial, Helvetica, sans-serif;
+  letter-spacing: 0.03em;
+  line-height: 1.65;
+}
+
+@media (max-width: 800px) {
+  .resident-profile-summary-view {
+    flex-direction: column;
+  }
+
+  .resident-profile-actions {
+    width: 100%;
+  }
+
+  .resident-profile-actions button {
+    width: 100%;
+  }
+
+  .resident-profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .dashboard-title-link {
   cursor: pointer;

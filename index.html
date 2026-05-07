@@ -47,6 +47,100 @@
           Complete your first diagnostic to generate board-readiness feedback and targeted review data.
         </p>
 
+        <section id="residentProfileCard" class="resident-profile-card">
+          <div id="residentProfileSummaryView" class="resident-profile-summary-view">
+            <div>
+              <p class="eyebrow-label">Resident Profile</p>
+              <h3 id="residentProfileTitle">Personalize Resident Ready</h3>
+              <p id="residentProfileDescription">
+                Add your track, program year, and board goal so your dashboard can better support your review plan.
+              </p>
+              <div id="residentProfileChips" class="resident-profile-chips"></div>
+            </div>
+
+            <div class="resident-profile-actions">
+              <button id="setupResidentProfileBtn" type="button">Set Up Profile</button>
+              <button id="editResidentProfileBtn" class="secondary hidden" type="button">Edit Profile</button>
+            </div>
+          </div>
+
+          <div id="residentProfileFormView" class="resident-profile-form-view hidden">
+            <div>
+              <p class="eyebrow-label">Profile Setup</p>
+              <h3>Tell Resident Ready about your board-prep goals</h3>
+              <p>
+                This stays local for now and will later connect to your Google sign-in profile.
+              </p>
+            </div>
+
+            <div class="resident-profile-form-grid">
+              <label>
+                Preferred display name
+                <input id="profileDisplayNameInput" type="text" placeholder="Example: Maggie or Dr. Newman" />
+              </label>
+
+              <label>
+                Specialty / track
+                <select id="profileSpecialtyTrackSelect">
+                  <option value="">Choose a specialty or track</option>
+                  <option value="Family Medicine">Family Medicine</option>
+                  <option value="Internal Medicine">Internal Medicine</option>
+                  <option value="Emergency Medicine">Emergency Medicine</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="Surgery">Surgery</option>
+                  <option value="OB/GYN">OB/GYN</option>
+                  <option value="Psychiatry">Psychiatry</option>
+                  <option value="Other / Not listed">Other / Not listed</option>
+                </select>
+              </label>
+
+              <label>
+                Program year
+                <select id="profileProgramYearSelect">
+                  <option value="">Choose a program year</option>
+                  <option value="Medical Student">Medical Student</option>
+                  <option value="Intern / PGY-1">Intern / PGY-1</option>
+                  <option value="PGY-2">PGY-2</option>
+                  <option value="PGY-3">PGY-3</option>
+                  <option value="PGY-4+">PGY-4+</option>
+                  <option value="Attending / Board Prep">Attending / Board Prep</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+
+              <label>
+                Board goal / exam focus
+                <select id="profileBoardGoalSelect">
+                  <option value="">Choose a board goal</option>
+                  <option value="COMLEX Level 3">COMLEX Level 3</option>
+                  <option value="USMLE Step 3">USMLE Step 3</option>
+                  <option value="Specialty Board Prep">Specialty Board Prep</option>
+                  <option value="In-Training Exam">In-Training Exam</option>
+                  <option value="General Clinical Reasoning Practice">General Clinical Reasoning Practice</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+
+              <label class="full-width">
+                Preferred study style
+                <select id="profileStudyStyleSelect">
+                  <option value="">Choose a study style</option>
+                  <option value="Quick practice sets">Quick practice sets</option>
+                  <option value="Detailed rationale review">Detailed rationale review</option>
+                  <option value="Mixed diagnostic + practice">Mixed diagnostic + practice</option>
+                  <option value="Flagged/missed question review">Flagged/missed question review</option>
+                  <option value="Not sure yet">Not sure yet</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="button-row resident-profile-form-actions">
+              <button id="saveResidentProfileBtn" type="button">Save Profile</button>
+              <button id="cancelResidentProfileBtn" class="secondary" type="button">Cancel</button>
+            </div>
+          </div>
+        </section>
+
         <div id="residentHomeStats" class="metric-row">
           <div class="metric">
             <strong id="homeScorePercent">--%</strong>
@@ -97,8 +191,6 @@
       Complete more than one diagnostic to unlock growth insights.
     </div>
   </section>
-
-
 
   <section class="dashboard-card">
     <h3>Performance by System</h3>

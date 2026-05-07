@@ -31,9 +31,11 @@ window.App = {
     const scoredAttempt = window.latestScoredAttempt;
     const facultySummary = window.latestFacultySummary;
 
+    this.renderResidentProfile();
+
     if (!scoredAttempt) {
       document.getElementById("residentHomeSummary").textContent =
-        "Complete your first diagnostic to generate board-readiness feedback and targeted review data.";
+        this.getPersonalizedDashboardSummary("empty");
 
       document.getElementById("homeScorePercent").textContent = "--%";
       document.getElementById("homeRiskLevel").textContent = "--";
@@ -54,7 +56,7 @@ window.App = {
     }
 
     document.getElementById("residentHomeSummary").textContent =
-      "Here is your latest saved diagnostic snapshot. Use this data to guide your next review session.";
+      this.getPersonalizedDashboardSummary("latest");
 
     document.getElementById("homeScorePercent").textContent =
       `${scoredAttempt.percentCorrect}%`;
@@ -82,10 +84,18 @@ window.App = {
   getResidentMemory() {
     try {
       const raw = localStorage.getItem(this.getStorageKey());
-      return raw ? JSON.parse(raw) : { attempts: [] };
+      const parsed = raw ? JSON.parse(raw) : {};
+
+      return {
+        profile: parsed.profile || null,
+        attempts: Array.isArray(parsed.attempts) ? parsed.attempts : []
+      };
     } catch (error) {
       console.warn("[Doctor Dashboard] Could not read resident memory.", error);
-      return { attempts: [] };
+      return {
+        profile: null,
+        attempts: []
+      };
     }
   },
 
@@ -96,6 +106,174 @@ window.App = {
       console.warn("[Doctor Dashboard] Could not save resident memory.", error);
     }
   },
+
+  getResidentProfile() {
+    const memory = this.getResidentMemory();
+    return memory.profile || null;
+  },
+
+  hasResidentProfile() {
+    const profile = this.getResidentProfile();
+
+    return !!(
+      profile &&
+      (
+        profile.displayName ||
+        profile.specialtyTrack ||
+        profile.programYear ||
+        profile.boardGoal ||
+        profile.preferredStudyStyle
+      )
+    );
+  },
+
+  saveResidentProfile(profileData) {
+    const memory = this.getResidentMemory();
+    const existingProfile = memory.profile || {};
+
+    memory.profile = {
+      displayName: profileData.displayName || "",
+      specialtyTrack: profileData.specialtyTrack || "",
+      programYear: profileData.programYear || "",
+      boardGoal: profileData.boardGoal || "",
+      preferredStudyStyle: profileData.preferredStudyStyle || "",
+      authProvider: existingProfile.authProvider || "local",
+      userId: existingProfile.userId || null,
+      email: existingProfile.email || null,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.saveResidentMemory(memory);
+    this.renderResidentHome();
+  },
+
+  renderResidentProfile() {
+    const card = document.getElementById("residentProfileCard");
+    const summaryView = document.getElementById("residentProfileSummaryView");
+    const formView = document.getElementById("residentProfileFormView");
+    const title = document.getElementById("residentProfileTitle");
+    const description = document.getElementById("residentProfileDescription");
+    const chips = document.getElementById("residentProfileChips");
+    const setupBtn = document.getElementById("setupResidentProfileBtn");
+    const editBtn = document.getElementById("editResidentProfileBtn");
+
+    if (!card || !summaryView || !formView || !title || !description || !chips) return;
+
+    const profile = this.getResidentProfile();
+
+    summaryView.classList.remove("hidden");
+    formView.classList.add("hidden");
+
+    if (!this.hasResidentProfile()) {
+      title.textContent = "Personalize Resident Ready";
+      description.textContent =
+        "Add your track, program year, and board goal so your dashboard can better support your review plan.";
+      chips.innerHTML = `
+        <span>Local profile</span>
+        <span>Google-ready later</span>
+        <span>Resident-owned</span>
+      `;
+
+      if (setupBtn) setupBtn.classList.remove("hidden");
+      if (editBtn) editBtn.classList.add("hidden");
+      return;
+    }
+
+    const displayName = this.getProfileDisplayName(profile);
+    const summaryParts = this.getProfileSummaryParts(profile);
+
+    title.textContent = displayName
+      ? `Welcome back, ${displayName}.`
+      : "Welcome back.";
+
+    description.textContent = summaryParts.length
+      ? summaryParts.join(" · ")
+      : "Your profile is saved locally on this device.";
+
+    chips.innerHTML = this.getProfileChips(profile)
+      .map((chip) => `<span>${chip}</span>`)
+      .join("");
+
+    if (setupBtn) setupBtn.classList.add("hidden");
+    if (editBtn) editBtn.classList.remove("hidden");
+  },
+
+  openResidentProfileForm() {
+    const summaryView = document.getElementById("residentProfileSummaryView");
+    const formView = document.getElementById("residentProfileFormView");
+    const profile = this.getResidentProfile() || {};
+
+    if (!summaryView || !formView) return;
+
+    document.getElementById("profileDisplayNameInput").value = profile.displayName || "";
+    document.getElementById("profileSpecialtyTrackSelect").value = profile.specialtyTrack || "";
+    document.getElementById("profileProgramYearSelect").value = profile.programYear || "";
+    document.getElementById("profileBoardGoalSelect").value = profile.boardGoal || "";
+    document.getElementById("profileStudyStyleSelect").value = profile.preferredStudyStyle || "";
+
+    summaryView.classList.add("hidden");
+    formView.classList.remove("hidden");
+  },
+
+  closeResidentProfileForm() {
+    this.renderResidentProfile();
+  },
+
+  collectResidentProfileFormData() {
+    return {
+      displayName: document.getElementById("profileDisplayNameInput")?.value.trim() || "",
+      specialtyTrack: document.getElementById("profileSpecialtyTrackSelect")?.value || "",
+      programYear: document.getElementById("profileProgramYearSelect")?.value || "",
+      boardGoal: document.getElementById("profileBoardGoalSelect")?.value || "",
+      preferredStudyStyle: document.getElementById("profileStudyStyleSelect")?.value || ""
+    };
+  },
+
+  getProfileDisplayName(profile = this.getResidentProfile()) {
+    return profile?.displayName?.trim() || "";
+  },
+
+  getProfileSummaryParts(profile = this.getResidentProfile()) {
+    if (!profile) return [];
+
+    return [
+      profile.specialtyTrack,
+      profile.programYear,
+      profile.boardGoal
+    ].filter(Boolean);
+  },
+
+  getProfileChips(profile = this.getResidentProfile()) {
+    if (!profile) return [];
+
+    const chips = [];
+
+    if (profile.specialtyTrack) chips.push(profile.specialtyTrack);
+    if (profile.programYear) chips.push(profile.programYear);
+    if (profile.boardGoal) chips.push(profile.boardGoal);
+    if (profile.preferredStudyStyle) chips.push(profile.preferredStudyStyle);
+
+    return chips.length ? chips : ["Profile saved locally"];
+  },
+
+  getPersonalizedDashboardSummary(state = "empty") {
+    const profile = this.getResidentProfile();
+    const displayName = this.getProfileDisplayName(profile);
+    const boardGoal = profile?.boardGoal;
+
+    const greeting = displayName ? `Welcome, ${displayName}. ` : "";
+
+    if (state === "latest") {
+      return `${greeting}Here is your latest saved diagnostic snapshot. Use this data to guide your next review session.`;
+    }
+
+    if (boardGoal) {
+      return `${greeting}Complete your first diagnostic to generate ${boardGoal}-focused board-readiness feedback and targeted review data.`;
+    }
+
+    return `${greeting}Complete your first diagnostic to generate board-readiness feedback and targeted review data.`;
+  },
+
 
   getAttemptType(record) {
     return record?.type || record?.scoredAttempt?.type || "diagnostic";
@@ -718,6 +896,35 @@ init() {
   if (startBtn) {
     startBtn.addEventListener("click", () => {
       window.ResidentTestUI.start();
+    });
+  }
+
+  const setupResidentProfileBtn = document.getElementById("setupResidentProfileBtn");
+  if (setupResidentProfileBtn) {
+    setupResidentProfileBtn.addEventListener("click", () => {
+      this.openResidentProfileForm();
+    });
+  }
+
+  const editResidentProfileBtn = document.getElementById("editResidentProfileBtn");
+  if (editResidentProfileBtn) {
+    editResidentProfileBtn.addEventListener("click", () => {
+      this.openResidentProfileForm();
+    });
+  }
+
+  const saveResidentProfileBtn = document.getElementById("saveResidentProfileBtn");
+  if (saveResidentProfileBtn) {
+    saveResidentProfileBtn.addEventListener("click", () => {
+      const profileData = this.collectResidentProfileFormData();
+      this.saveResidentProfile(profileData);
+    });
+  }
+
+  const cancelResidentProfileBtn = document.getElementById("cancelResidentProfileBtn");
+  if (cancelResidentProfileBtn) {
+    cancelResidentProfileBtn.addEventListener("click", () => {
+      this.closeResidentProfileForm();
     });
   }
 
