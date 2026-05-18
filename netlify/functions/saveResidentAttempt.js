@@ -104,6 +104,7 @@ function buildAttemptSummary(record = {}, resident = {}, organizationContext = {
   const profileSnapshot = getResidentProfileSnapshot(record, resident);
   const facultyScope = getFacultyScope(record);
   const cohortId = organizationContext.cohortId || getCohortId(record);
+  const studentFeedback = record.studentFeedback || {};
 
   return {
     id: record.id,
@@ -133,6 +134,12 @@ function buildAttemptSummary(record = {}, resident = {}, organizationContext = {
     missedCount: Math.max(0, totalQuestions - correctCount),
     flaggedCount,
     totalTimeSeconds: safeNumber(scoredAttempt.totalTimeSeconds, 0),
+    studentFeedbackSnapshot: {
+      scoreLine: studentFeedback.scoreLine || "",
+      strengthsLine: studentFeedback.strengthsLine || "",
+      weaknessesLine: studentFeedback.weaknessesLine || "",
+      errorPatternLine: studentFeedback.errorPatternLine || ""
+    },
     createdBy: resident.email,
     updatedAt: new Date().toISOString()
   };

@@ -3647,6 +3647,205 @@ body.dark-mode .faculty-cohort-actions select {
   }
 }
 
+/* =========================================================
+   FACULTY RESIDENT GROWTH PROFILE
+   ========================================================= */
+
+.resident-growth-profile-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.resident-growth-profile-header {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.resident-growth-profile-header h4,
+.resident-growth-profile-header p {
+  margin: 0;
+}
+
+.resident-growth-profile-header h4 {
+  color: var(--deep-space);
+  font-size: 1.35rem;
+}
+
+.resident-growth-profile-header p {
+  color: var(--blue-slate);
+  font-weight: 700;
+}
+
+.resident-growth-profile-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.resident-growth-profile-metrics div {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(62, 92, 118, 0.12);
+}
+
+.resident-growth-profile-metrics span {
+  display: block;
+  color: var(--blue-slate);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.resident-growth-profile-metrics strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.45rem;
+  color: var(--deep-space);
+}
+
+.resident-growth-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.resident-growth-insight-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.65);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.resident-growth-insight-card > strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--deep-space);
+}
+
+.resident-growth-tag-row,
+.resident-growth-insight-lines {
+  display: grid;
+  gap: 8px;
+}
+
+.resident-growth-insight-line {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(62, 92, 118, 0.12);
+  color: var(--deep-space);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.resident-growth-insight-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.resident-growth-recent-attempts {
+  display: grid;
+  gap: 10px;
+}
+
+.resident-growth-recent-attempts h4 {
+  margin: 0;
+  color: var(--deep-space);
+}
+
+.resident-growth-attempt-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.4fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.1);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.resident-growth-attempt-row strong,
+.resident-growth-attempt-row span {
+  display: block;
+}
+
+.resident-growth-attempt-row span {
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+body.dark-mode .resident-growth-profile-header,
+body.dark-mode .resident-growth-profile-metrics div,
+body.dark-mode .resident-growth-insight-card,
+body.dark-mode .resident-growth-attempt-row {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .resident-growth-profile-header h4,
+body.dark-mode .resident-growth-profile-header p,
+body.dark-mode .resident-growth-profile-metrics span,
+body.dark-mode .resident-growth-profile-metrics strong,
+body.dark-mode .resident-growth-insight-card > strong,
+body.dark-mode .resident-growth-recent-attempts h4,
+body.dark-mode .resident-growth-attempt-row span {
+  color: var(--eggshell);
+}
+
+body.dark-mode .resident-growth-insight-line {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--eggshell);
+}
+
+@media (max-width: 950px) {
+  .resident-growth-profile-header,
+  .resident-growth-profile-grid,
+  .resident-growth-attempt-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .resident-growth-profile-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .resident-growth-attempt-row button {
+    width: 100%;
+  }
+}
+
+.historical-attempts-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.58);
+  border: 1px dashed rgba(62, 92, 118, 0.28);
+}
+
+.historical-attempts-box button {
+  justify-self: start;
+}
+
+.historical-attempts-list {
+  display: grid;
+  gap: 10px;
+}
+
+body.dark-mode .historical-attempts-box {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+
 .roster-action-status.success {
   color: #1f7a3f;
   font-weight: 800;
@@ -3659,7 +3858,7 @@ body.dark-mode .faculty-cohort-actions select {
 
 .faculty-roster-item {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr) minmax(300px, 1.1fr);
+  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr) minmax(130px, auto) minmax(300px, 1.1fr);
   align-items: center;
   gap: 16px;
   width: 100%;
@@ -3667,7 +3866,18 @@ body.dark-mode .faculty-cohort-actions select {
 }
 
 .faculty-roster-item.faculty-roster-readonly {
-  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr);
+  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr) minmax(130px, auto);
+}
+
+.faculty-roster-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.faculty-roster-profile-actions button {
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .faculty-roster-move-controls {

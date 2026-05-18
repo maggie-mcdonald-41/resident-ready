@@ -10,6 +10,7 @@ window.FacultyApp = {
   selectedCohortId: "all",
   latestFacultyIndexData: null,
   latestCreatedResidentAccessCode: null,
+  showHistoricalCohortAttempts: false,
 
   isGoogleClientConfigured() {
     return !!(
@@ -2114,6 +2115,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     const rosterList = document.getElementById("facultyRosterList");
     const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
     const detailPanel = document.getElementById("facultyAttemptDetailPanel");
+    const growthProfilePanel = document.getElementById("residentGrowthProfilePanel");
 
     if (status) status.textContent = "Sign in with Google to load the faculty dashboard.";
     if (residentCount) residentCount.textContent = "--";
@@ -2138,6 +2140,15 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         <div class="diagnostic-history-empty-state">
           <strong>Sign in to review attempts.</strong>
           <p>Question-level faculty-safe reviews will appear here after residents complete work.</p>
+        </div>
+      `;
+    }
+
+    if (growthProfilePanel) {
+      growthProfilePanel.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Sign in to view resident growth profiles.</strong>
+          <p>Resident profiles will appear after roster data loads.</p>
         </div>
       `;
     }
@@ -2168,11 +2179,13 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     const rosterList = document.getElementById("facultyRosterList");
     const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
     const detailPanel = document.getElementById("facultyAttemptDetailPanel");
+    const growthProfilePanel = document.getElementById("residentGrowthProfilePanel");
 
     if (status) status.textContent = "Loading faculty preview...";
     if (rosterList) rosterList.innerHTML = "Loading roster...";
     if (recentAttemptsList) recentAttemptsList.innerHTML = "Loading recent attempts...";
     if (detailPanel) detailPanel.innerHTML = "Select a recent attempt to preview the faculty-safe review.";
+    if (growthProfilePanel) growthProfilePanel.innerHTML = "Select a resident from the roster to open their growth profile.";
 
     this.renderHighlightList("facultyCohortStrengthsList", [], "Loading cohort strengths...");
     this.renderHighlightList("facultyCohortNeedsList", [], "Loading cohort needs...");
@@ -2303,13 +2316,23 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         `Loaded ${filteredResidents.length} resident${filteredResidents.length === 1 ? "" : "s"} and ${filteredAttempts.length} recent attempt${filteredAttempts.length === 1 ? "" : "s"} for ${this.getCohortLabel(this.selectedCohortId)} in ${this.getSelectedOrganizationLabel()}.`;
 
       this.renderFacultyRoster(filteredResidents);
-      this.renderFacultyRecentAttempts(filteredAttempts);
+      this.renderFacultyRecentAttempts(filteredAttempts, filteredResidents);
       detailPanel.innerHTML = `
         <div class="diagnostic-history-empty-state">
           <strong>Select a recent attempt to open the faculty-safe review.</strong>
           <p>The review will show the stem, answer choices, selected answer, correct answer, rationale, and tags while keeping resident notes and testing tools private.</p>
         </div>
       `;
+
+      const growthProfilePanel = document.getElementById("residentGrowthProfilePanel");
+      if (growthProfilePanel) {
+        growthProfilePanel.innerHTML = `
+          <div class="diagnostic-history-empty-state">
+            <strong>Select a resident from the roster.</strong>
+            <p>The profile will show recent progress, strengths, needs, and faculty-safe review links.</p>
+          </div>
+        `;
+      }
     } catch (error) {
       console.warn("[Resident Ready Faculty] Could not render faculty preview.", error);
 
@@ -2320,6 +2343,283 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       detailPanel.innerHTML = "Faculty-safe review failed to load.";
     }
   },
+
+  getResidentAttemptsForProfile(residentId = "") {
+    const attempts = Array.isArray(this.latestFacultyIndexData?.recentAttempts?.attempts)
+      ? this.latestFacultyIndexData.recentAttempts.attempts
+      : [];
+
+    return attempts
+      .filter((attempt) => attempt.residentId === residentId)
+      .sort((a, b) =>
+        new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime()
+      );
+  },
+
+  getAttemptFeedbackSnapshot(attempt = {}) {
+    return attempt.studentFeedbackSnapshot || attempt.studentFeedback || {};
+  },
+
+  cleanFeedbackLine(value = "") {
+    return String(value || "")
+      .replace(/^Strengths:\s*/i, "")
+      .replace(/^Needs:\s*/i, "")
+      .replace(/^Weaknesses:\s*/i, "")
+      .replace(/^Priority Needs:\s*/i, "")
+      .replace(/^Error Pattern:\s*/i, "")
+      .trim();
+  },
+
+  getResidentFirstName(residentName = "", residentEmail = "") {
+    const titleWords = new Set([
+      "dr",
+      "doctor",
+      "mr",
+      "mrs",
+      "ms",
+      "miss",
+      "prof",
+      "professor"
+    ]);
+
+    const nameParts = String(residentName || "")
+      .trim()
+      .split(/\s+/)
+      .map((part) => part.replace(/[.]/g, ""))
+      .filter(Boolean)
+      .filter((part) => !titleWords.has(part.toLowerCase()));
+
+    if (nameParts.length) {
+      return nameParts[0];
+    }
+
+    const emailName = String(residentEmail || "")
+      .split("@")[0]
+      .replace(/[._-]+/g, " ")
+      .trim();
+
+    if (emailName) {
+      return emailName.replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    return "This resident";
+  },
+
+  personalizeResidentFeedbackLine(line = "", residentName = "This resident") {
+    const safeName = this.escapeHtml(residentName);
+    const possessiveName = safeName.endsWith("s") ? `${safeName}’` : `${safeName}’s`;
+
+    return String(line || "")
+      .replace(/\bYour\b/g, possessiveName)
+      .replace(/\byour\b/g, possessiveName)
+      .replace(/\bYou\b/g, safeName)
+      .replace(/\byou\b/g, safeName)
+      .trim();
+  },
+
+  getResidentFeedbackLinesForProfile(attempts = []) {
+    const strengths = [];
+    const needs = [];
+    const errorPatterns = [];
+
+    attempts.forEach((attempt) => {
+      const feedback = this.getAttemptFeedbackSnapshot(attempt);
+
+      const strengthLine = this.cleanFeedbackLine(feedback.strengthsLine);
+      const weaknessLine = this.cleanFeedbackLine(feedback.weaknessesLine);
+      const errorLine = this.cleanFeedbackLine(feedback.errorPatternLine);
+
+      if (strengthLine) strengths.push(strengthLine);
+      if (weaknessLine) needs.push(weaknessLine);
+      if (errorLine) errorPatterns.push(errorLine);
+    });
+
+    return {
+      strengths: Array.from(new Set(strengths)).slice(0, 4),
+      needs: Array.from(new Set(needs)).slice(0, 4),
+      errorPatterns: Array.from(new Set(errorPatterns)).slice(0, 3)
+    };
+  },
+
+  getResidentProfileSummary(resident = {}, attempts = []) {
+    const latestAttempt = attempts[0] || null;
+    const scores = attempts
+      .map((attempt) => Number(attempt.percentCorrect))
+      .filter((score) => Number.isFinite(score));
+
+    const averageScore = scores.length
+      ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+      : null;
+
+    const residentName = resident.residentName || resident.displayName || resident.residentEmail || "This resident";
+    const residentFirstName = this.getResidentFirstName(residentName, resident.residentEmail);
+    const feedbackLines = this.getResidentFeedbackLinesForProfile(attempts);
+
+    const fallbackStrengths = attempts
+      .filter((attempt) => Number(attempt.percentCorrect || 0) >= 70)
+      .map((attempt) => this.getAttemptFocusLabel(attempt))
+      .filter(Boolean);
+
+    const fallbackNeeds = attempts
+      .filter((attempt) => Number(attempt.percentCorrect || 0) < 70)
+      .map((attempt) => this.getAttemptFocusLabel(attempt))
+      .filter(Boolean);
+
+    return {
+      residentName,
+      residentEmail: resident.residentEmail || "No email",
+      cohortLabel: resident.cohortLabel || this.getCohortLabel(resident.cohortId || "unassigned"),
+      latestAttempt,
+      averageScore,
+      strengths: feedbackLines.strengths.length
+        ? feedbackLines.strengths.map((line) =>
+            this.personalizeResidentFeedbackLine(line, residentFirstName)
+          )
+        : Array.from(new Set(fallbackStrengths)).slice(0, 4),
+      needs: feedbackLines.needs.length
+        ? feedbackLines.needs.map((line) =>
+            this.personalizeResidentFeedbackLine(line, residentFirstName)
+          )
+        : Array.from(new Set(fallbackNeeds)).slice(0, 4),
+      errorPatterns: feedbackLines.errorPatterns.map((line) =>
+        this.personalizeResidentFeedbackLine(line, residentFirstName)
+      )
+    };
+  },
+
+  renderResidentProfileInsightList(items = [], emptyMessage = "More attempts are needed.") {
+    if (!items.length) {
+      return `<p class="dashboard-card-note">${this.escapeHtml(emptyMessage)}</p>`;
+    }
+
+    return items
+      .map((item) => `
+        <div class="resident-growth-insight-line">
+          ${this.escapeHtml(item)}
+        </div>
+      `)
+      .join("");
+  },
+
+  renderResidentGrowthProfile(residentId = "") {
+    const panel = document.getElementById("residentGrowthProfilePanel");
+    if (!panel) return;
+
+    const residents = Array.isArray(this.latestFacultyIndexData?.roster?.residents)
+      ? this.latestFacultyIndexData.roster.residents
+      : [];
+
+    const resident = residents.find((item) => item.residentId === residentId);
+
+    if (!resident) {
+      panel.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Resident profile could not be opened.</strong>
+          <p>Refresh the faculty dashboard and try again.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const attempts = this.getResidentAttemptsForProfile(residentId);
+    const summary = this.getResidentProfileSummary(resident, attempts);
+    const latestScoreClass = this.getScoreClass(summary.latestAttempt?.percentCorrect);
+
+    const recentAttemptsHtml = attempts.length
+      ? attempts.slice(0, 8).map((attempt) => {
+          const scoreClass = this.getScoreClass(attempt.percentCorrect);
+
+          return `
+            <div class="resident-growth-attempt-row">
+              <div>
+                <strong>${this.escapeHtml(attempt.type || "Attempt")}</strong>
+                <span>${this.escapeHtml(this.getAttemptFocusLabel(attempt))} · ${this.formatDate(attempt.savedAt)}</span>
+              </div>
+
+              <div>
+                <strong class="${scoreClass}">${attempt.percentCorrect ?? "--"}%</strong>
+                <span>${attempt.correctCount ?? "--"}/${attempt.totalQuestions ?? "--"} correct</span>
+              </div>
+
+              <button
+                class="secondary faculty-review-attempt-btn"
+                type="button"
+                data-resident-id="${this.escapeAttribute(attempt.residentId)}"
+                data-attempt-id="${this.escapeAttribute(attempt.id)}"
+                data-faculty-scope="${this.escapeAttribute(attempt.facultyScope || "default")}"
+              >
+                Review
+              </button>
+            </div>
+          `;
+        }).join("")
+      : `
+        <div class="diagnostic-history-empty-state">
+          <strong>No recent attempts for this resident yet.</strong>
+          <p>Recent attempts will appear here after the resident completes diagnostics or practice.</p>
+        </div>
+      `;
+
+    panel.innerHTML = `
+      <div class="resident-growth-profile-header">
+        <div>
+          <p class="eyebrow-label">Resident Profile</p>
+          <h4>${this.escapeHtml(summary.residentName)}</h4>
+          <p>${this.escapeHtml(summary.residentEmail)} · ${this.escapeHtml(summary.cohortLabel)}</p>
+        </div>
+
+        <div class="resident-growth-profile-metrics">
+          <div>
+            <span>Latest Score</span>
+            <strong class="${latestScoreClass}">${summary.latestAttempt?.percentCorrect ?? "--"}%</strong>
+          </div>
+
+          <div>
+            <span>Average Recent Score</span>
+            <strong>${summary.averageScore === null ? "--%" : `${summary.averageScore}%`}</strong>
+          </div>
+
+          <div>
+            <span>Recent Attempts</span>
+            <strong>${attempts.length}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="resident-growth-profile-grid">
+        <div class="resident-growth-insight-card">
+          <strong>Strengths from Resident Feedback</strong>
+          <div class="resident-growth-insight-lines">
+            ${this.renderResidentProfileInsightList(summary.strengths, "No clear strength pattern yet.")}
+          </div>
+        </div>
+
+        <div class="resident-growth-insight-card">
+          <strong>Priority Needs from Resident Feedback</strong>
+          <div class="resident-growth-insight-lines">
+            ${this.renderResidentProfileInsightList(summary.needs, "No clear priority need yet.")}
+          </div>
+        </div>
+      </div>
+
+      ${
+        summary.errorPatterns && summary.errorPatterns.length
+          ? `<div class="resident-growth-insight-card full-width">
+              <strong>Common Error Patterns</strong>
+              <div class="resident-growth-insight-lines">
+                ${this.renderResidentProfileInsightList(summary.errorPatterns, "No clear error pattern yet.")}
+              </div>
+            </div>`
+          : ""
+      }
+
+      <div class="resident-growth-recent-attempts">
+        <h4>This Resident’s Recent Attempts</h4>
+        ${recentAttemptsHtml}
+      </div>
+    `;
+  },
+
 
   renderMoveResidentCohortOptions(currentCohortId = "unassigned") {
     const cohorts = Array.isArray(this.latestOrganizationCohorts)
@@ -2446,6 +2746,16 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     rosterList.innerHTML = residents
       .map((resident) => {
         const currentCohortId = resident.cohortId || "unassigned";
+        const profileButtonHtml = `
+          <button
+            class="secondary faculty-view-resident-profile-btn"
+            type="button"
+            data-resident-id="${this.escapeAttribute(resident.residentId)}"
+          >
+            View Profile
+          </button>
+        `;
+
         const moveControlsHtml = this.isOrgAdmin()
           ? `
             <div class="faculty-roster-move-controls">
@@ -2482,6 +2792,10 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
               <span>${this.escapeHtml(resident.programYear || "No year")} · ${this.escapeHtml(resident.specialtyTrack || "No specialty")}</span>
             </div>
 
+            <div class="faculty-roster-profile-actions">
+              ${profileButtonHtml}
+            </div>
+
             ${moveControlsHtml}
           </div>
         `;
@@ -2489,21 +2803,36 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       .join("");
   },
 
-  renderFacultyRecentAttempts(attempts = []) {
-    const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
-    if (!recentAttemptsList) return;
+  getCurrentRosterResidentIds(residents = []) {
+    return new Set(
+      (Array.isArray(residents) ? residents : [])
+        .map((resident) => resident.residentId)
+        .filter(Boolean)
+    );
+  },
 
-    if (!attempts.length) {
-      recentAttemptsList.innerHTML = `
-        <div class="diagnostic-history-empty-state">
-          <strong>No recent attempts for this cohort yet.</strong>
-          <p>After residents join and complete diagnostics or practice, their faculty-safe attempt summaries will appear here.</p>
-        </div>
-      `;
-      return;
+  splitCurrentAndHistoricalAttempts(residents = [], attempts = []) {
+    const currentResidentIds = this.getCurrentRosterResidentIds(residents);
+
+    if (this.selectedCohortId === "all") {
+      return {
+        currentAttempts: attempts,
+        historicalAttempts: []
+      };
     }
 
-    recentAttemptsList.innerHTML = attempts
+    return {
+      currentAttempts: attempts.filter((attempt) =>
+        currentResidentIds.has(attempt.residentId)
+      ),
+      historicalAttempts: attempts.filter((attempt) =>
+        !currentResidentIds.has(attempt.residentId)
+      )
+    };
+  },
+
+  renderFacultyAttemptRows(attempts = []) {
+    return attempts
       .slice(0, 25)
       .map((attempt) => {
         const scoreClass = this.getScoreClass(attempt.percentCorrect);
@@ -2511,8 +2840,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         return `
           <div class="attempt-history-item faculty-attempt-item">
             <div>
-              <strong>${attempt.residentName || attempt.residentEmail || "Unnamed Resident"}</strong>
-              <span>${attempt.type || "attempt"} · ${this.formatDate(attempt.savedAt)}</span>
+              <strong>${this.escapeHtml(attempt.residentName || attempt.residentEmail || "Unnamed Resident")}</strong>
+              <span>${this.escapeHtml(attempt.type || "attempt")} · ${this.formatDate(attempt.savedAt)}</span>
             </div>
 
             <div>
@@ -2535,9 +2864,67 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       .join("");
   },
 
+
+  renderFacultyRecentAttempts(attempts = [], residents = []) {
+    const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
+    if (!recentAttemptsList) return;
+
+    const { currentAttempts, historicalAttempts } =
+      this.splitCurrentAndHistoricalAttempts(residents, attempts);
+
+    if (!currentAttempts.length && !historicalAttempts.length) {
+      recentAttemptsList.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No cohort recent attempts yet.</strong>
+          <p>After current residents in this cohort complete diagnostics or practice, their faculty-safe attempt summaries will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const currentAttemptsHtml = currentAttempts.length
+      ? this.renderFacultyAttemptRows(currentAttempts)
+      : `
+        <div class="diagnostic-history-empty-state">
+          <strong>No current-resident attempts yet.</strong>
+          <p>This cohort has no recent attempts from residents currently assigned here.</p>
+        </div>
+      `;
+
+    const historicalAttemptsHtml = historicalAttempts.length
+      ? `
+        <div class="historical-attempts-box">
+          <button
+            id="toggleHistoricalAttemptsBtn"
+            class="secondary"
+            type="button"
+          >
+            ${this.showHistoricalCohortAttempts ? "Hide" : "Show"} ${historicalAttempts.length} historical attempt${historicalAttempts.length === 1 ? "" : "s"} from moved residents
+          </button>
+
+          ${
+            this.showHistoricalCohortAttempts
+              ? `<div class="historical-attempts-list">${this.renderFacultyAttemptRows(historicalAttempts)}</div>`
+              : `<p class="dashboard-card-note">Historical attempts are hidden because those residents are no longer currently assigned to this cohort.</p>`
+          }
+        </div>
+      `
+      : "";
+
+    recentAttemptsList.innerHTML = `
+      ${currentAttemptsHtml}
+      ${historicalAttemptsHtml}
+    `;
+  },
+
   async openFacultyAttemptDetail(residentId, attemptId, facultyScope = "default") {
     const detailPanel = document.getElementById("facultyAttemptDetailPanel");
     if (!detailPanel) return;
+
+    detailPanel.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
 
     detailPanel.innerHTML = "Loading faculty-safe attempt review...";
 
@@ -2685,6 +3072,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       organizationSelect.addEventListener("change", (event) => {
         this.selectedOrganizationId = event.target.value || "";
         this.selectedCohortId = "all";
+        this.showHistoricalCohortAttempts = false;
         this.latestCreatedResidentAccessCode = null;
         this.renderCreatedResidentAccessCode(null);
         this.renderRoleBasedControls();
@@ -2704,6 +3092,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     if (cohortSelect) {
       cohortSelect.addEventListener("change", (event) => {
         this.selectedCohortId = event.target.value || "all";
+        this.showHistoricalCohortAttempts = false;
         this.renderFacultyPreview();
       });
     }
@@ -2841,25 +3230,58 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     const rosterList = document.getElementById("facultyRosterList");
     if (rosterList) {
       rosterList.addEventListener("click", (event) => {
+        const profileBtn = event.target.closest(".faculty-view-resident-profile-btn");
         const moveBtn = event.target.closest(".faculty-move-resident-btn");
-        if (!moveBtn) return;
 
-        this.moveResidentToCohortFromUI(moveBtn.dataset.residentId || "");
+        if (profileBtn) {
+          this.renderResidentGrowthProfile(profileBtn.dataset.residentId || "");
+          return;
+        }
+
+        if (moveBtn) {
+          this.moveResidentToCohortFromUI(moveBtn.dataset.residentId || "");
+        }
       });
     }
+
+    const handleFacultyReviewClick = (event) => {
+      const reviewBtn = event.target.closest(".faculty-review-attempt-btn");
+      if (!reviewBtn) return;
+
+      this.openFacultyAttemptDetail(
+        reviewBtn.dataset.residentId,
+        reviewBtn.dataset.attemptId,
+        reviewBtn.dataset.facultyScope || "default"
+      );
+    };
 
     const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
     if (recentAttemptsList) {
       recentAttemptsList.addEventListener("click", (event) => {
-        const reviewBtn = event.target.closest(".faculty-review-attempt-btn");
-        if (!reviewBtn) return;
+        const toggleHistoricalBtn = event.target.closest("#toggleHistoricalAttemptsBtn");
 
-        this.openFacultyAttemptDetail(
-          reviewBtn.dataset.residentId,
-          reviewBtn.dataset.attemptId,
-          reviewBtn.dataset.facultyScope || "default"
-        );
+        if (toggleHistoricalBtn) {
+          this.showHistoricalCohortAttempts = !this.showHistoricalCohortAttempts;
+
+          const attempts = Array.isArray(this.latestFacultyIndexData?.recentAttempts?.attempts)
+            ? this.latestFacultyIndexData.recentAttempts.attempts
+            : [];
+
+          const residents = Array.isArray(this.latestFacultyIndexData?.roster?.residents)
+            ? this.latestFacultyIndexData.roster.residents
+            : [];
+
+          this.renderFacultyRecentAttempts(attempts, residents);
+          return;
+        }
+
+        handleFacultyReviewClick(event);
       });
+    }
+
+    const residentGrowthProfilePanel = document.getElementById("residentGrowthProfilePanel");
+    if (residentGrowthProfilePanel) {
+      residentGrowthProfilePanel.addEventListener("click", handleFacultyReviewClick);
     }
 
     const themeToggleBtn = document.getElementById("themeToggleBtn");
