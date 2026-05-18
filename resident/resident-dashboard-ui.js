@@ -1,4 +1,27 @@
 window.ResidentDashboardUI = {
+  clear() {
+    const systemChart = document.getElementById("systemPerformanceChart");
+    const clinicalChart = document.getElementById("clinicalReasoningChart");
+    const errorChart = document.getElementById("errorPatternChart");
+    const remediationList = document.getElementById("remediationList");
+
+    if (systemChart) {
+      systemChart.innerHTML = `<p class="empty-note">Complete a diagnostic to see performance by system.</p>`;
+    }
+
+    if (clinicalChart) {
+      clinicalChart.innerHTML = `<p class="empty-note">Complete a diagnostic to see your clinical reasoning breakdown.</p>`;
+    }
+
+    if (errorChart) {
+      errorChart.innerHTML = `<p class="empty-note">Complete a diagnostic to see top error patterns.</p>`;
+    }
+
+    if (remediationList) {
+      remediationList.innerHTML = `<p class="empty-note">Complete a diagnostic to generate suggested review areas.</p>`;
+    }
+  },
+
   getResidentFriendlyLabel(tag) {
     if (!tag) return "";
 

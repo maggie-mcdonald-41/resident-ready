@@ -22,3 +22,5 @@ build/
 
 # Local test files
 *.local
+# Local Netlify folder
+.netlify

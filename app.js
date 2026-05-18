@@ -2,11 +2,9 @@
 
 window.App = {
   GOOGLE_CLIENT_ID: "333668105417-bljp17q4m7ur52pq3hmj1nr4f8r468rn.apps.googleusercontent.com",
-  GOOGLE_DRIVE_SCOPE: "https://www.googleapis.com/auth/drive.file",
-  driveTokenClient: null,
-  driveAccessToken: null,
-  driveTokenExpiresAt: null,
-  driveAuthorizationInProgress: false,
+  residentBackendSessionKey: "residentReadyBackendSession_v1",
+  googleSignInInitialized: false,
+  latestResidentOrganizationMemberships: [],
   showView(viewId) {
     document.querySelectorAll(".app-view").forEach((view) => {
       view.classList.remove("active-view");
@@ -17,6 +15,7 @@ window.App = {
     if (viewId === "launchView") {
       this.loadSavedResidentData();
       this.renderResidentHome();
+      this.renderCloudSaveState("Sign in with Google to save your profile and attempts across devices.");
     }
 
     if (
@@ -38,6 +37,7 @@ window.App = {
     const facultySummary = window.latestFacultySummary;
 
     this.renderResidentProfile();
+    this.renderResidentInstitutionPanel();
 
     if (!scoredAttempt) {
       document.getElementById("residentHomeSummary").textContent =
@@ -57,6 +57,12 @@ window.App = {
       }
 
       this.renderPracticeHistory();
+
+      this.renderGrowthInsights();
+
+      if (window.ResidentDashboardUI && typeof window.ResidentDashboardUI.clear === "function") {
+        window.ResidentDashboardUI.clear();
+      }
 
       return;
     }
@@ -113,6 +119,23 @@ window.App = {
     }
   },
 
+  clearResidentMemory() {
+    try {
+      localStorage.removeItem(this.getStorageKey());
+    } catch (error) {
+      console.warn("[Doctor Dashboard] Could not clear resident memory.", error);
+    }
+  },
+
+  clearResidentRuntimeState() {
+    window.latestScoredAttempt = null;
+    window.latestFacultySummary = null;
+    window.latestStudentFeedback = null;
+    window.latestResidentReadySaveResponse = null;
+
+    this.latestResidentOrganizationMemberships = [];
+  },
+
   getResidentProfile() {
     const memory = this.getResidentMemory();
     return memory.profile || null;
@@ -133,7 +156,8 @@ window.App = {
     );
   },
 
-  saveResidentProfile(profileData) {
+  saveResidentProfile(profileData, options = {}) {
+    const shouldSyncToBackend = options.syncToBackend !== false;
     const memory = this.getResidentMemory();
     const existingProfile = memory.profile || {};
 
@@ -154,6 +178,12 @@ window.App = {
 
     this.saveResidentMemory(memory);
     this.renderResidentHome();
+
+    if (shouldSyncToBackend) {
+      this.saveResidentProfileToBackend(memory.profile).catch((error) => {
+        console.warn("[Resident Ready] Could not save resident profile to backend.", error);
+      });
+    }
   },
 
   renderResidentProfile() {
@@ -315,6 +345,7 @@ window.App = {
       callback: (response) => this.handleGoogleCredentialResponse(response)
     });
 
+    this.googleSignInInitialized = true;
     this.renderGoogleSignInButton();
     this.renderGoogleSignInState();
   },
@@ -340,12 +371,17 @@ window.App = {
       return;
     }
 
-    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-      buttonContainer.innerHTML = `
-        <p class="google-auth-placeholder">Loading Google sign-in...</p>
-      `;
-      return;
-    }
+  if (
+  !window.google ||
+  !window.google.accounts ||
+  !window.google.accounts.id ||
+  !this.googleSignInInitialized
+) {
+  buttonContainer.innerHTML = `
+    <p class="google-auth-placeholder">Loading Google sign-in...</p>
+  `;
+  return;
+}
 
     window.google.accounts.id.renderButton(buttonContainer, {
       theme: "outline",
@@ -357,7 +393,7 @@ window.App = {
     });
   },
 
-  handleGoogleCredentialResponse(response) {
+  async handleGoogleCredentialResponse(response) {
     if (!response || !response.credential) {
       alert("Google sign-in did not return a credential. Please try again.");
       return;
@@ -370,11 +406,21 @@ window.App = {
       return;
     }
 
+    this.clearResidentMemory();
+    this.clearResidentRuntimeState();
     this.saveGoogleIdentityToProfile(googleProfile);
 
-    // After sign-in succeeds, immediately begin the Drive Save authorization flow.
-    // Google may still show a separate consent screen because Drive access is a separate scope.
-    this.requestDriveAccess({ autoAfterSignIn: true });
+    try {
+      await this.connectResidentBackendSession(response.credential, googleProfile);
+      await this.loadResidentProfileFromBackend();
+      await this.loadResidentOrganizations();
+      await this.loadResidentAttemptsFromBackend();
+    } catch (error) {
+      console.warn("[Resident Ready] Backend resident session was not created.", error);
+    }
+
+    this.renderCloudSaveState("Cloud save connected. Profile and attempts are saving to Resident Ready.");
+    console.log("[Resident Ready] Backend sign-in connected. Cloud save is active.");
   },
 
   decodeGoogleCredential(credential) {
@@ -394,6 +440,234 @@ window.App = {
       return null;
     }
   },
+
+  getResidentBackendSession() {
+    try {
+      const raw = localStorage.getItem(this.residentBackendSessionKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.warn("[Resident Ready] Could not read backend session.", error);
+      return null;
+    }
+  },
+
+  saveResidentBackendSession(sessionData) {
+    try {
+      localStorage.setItem(
+        this.residentBackendSessionKey,
+        JSON.stringify(sessionData)
+      );
+    } catch (error) {
+      console.warn("[Resident Ready] Could not save backend session.", error);
+    }
+  },
+
+  clearResidentBackendSession() {
+    try {
+      localStorage.removeItem(this.residentBackendSessionKey);
+    } catch (error) {
+      console.warn("[Resident Ready] Could not clear backend session.", error);
+    }
+  },
+
+  hasValidResidentBackendSession() {
+    const session = this.getResidentBackendSession();
+
+    return !!(
+      session &&
+      session.sessionToken &&
+      session.expiresAt &&
+      Number(session.expiresAt) * 1000 > Date.now() + 60000
+    );
+  },
+
+  async residentApiFetch(functionName, options = {}) {
+    const session = this.getResidentBackendSession();
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    };
+
+    if (session?.sessionToken) {
+      headers.Authorization = `Bearer ${session.sessionToken}`;
+    }
+
+    const response = await fetch(`/.netlify/functions/${functionName}`, {
+      ...options,
+      headers
+    });
+
+    const text = await response.text();
+    let data = null;
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (error) {
+      data = { success: false, error: text || "Invalid JSON response." };
+    }
+
+    if (!response.ok || data?.success === false) {
+      throw new Error(data?.error || `Request failed: ${functionName}`);
+    }
+
+    return data;
+  },
+
+  async connectResidentBackendSession(idToken, googleProfile = {}) {
+    const data = await this.residentApiFetch("resident-session", {
+      method: "POST",
+      body: JSON.stringify({
+        idToken,
+        profile: {
+          displayName: googleProfile.name || "",
+          email: googleProfile.email || "",
+          pictureUrl: googleProfile.picture || ""
+        }
+      })
+    });
+
+    this.saveResidentBackendSession({
+      sessionToken: data.sessionToken,
+      expiresAt: data.expiresAt,
+      resident: data.resident
+    });
+
+    console.log("[Resident Ready] Backend session connected.", data.resident?.email);
+
+    return data;
+  },
+
+  async loadResidentProfileFromBackend() {
+    if (!this.hasValidResidentBackendSession()) {
+      return null;
+    }
+
+    const data = await this.residentApiFetch("getResidentProfile", {
+      method: "GET"
+    });
+
+    if (!data.profile) {
+      return null;
+    }
+
+    const memory = this.getResidentMemory();
+
+    memory.profile = {
+      ...data.profile,
+      authProvider: data.profile.authProvider || "google",
+      userId: data.profile.userId || null,
+      email: data.profile.email || null,
+      pictureUrl: data.profile.pictureUrl || null,
+      googleName: data.profile.googleName || null,
+      updatedAt: data.profile.updatedAt || new Date().toISOString()
+    };
+
+    this.saveResidentMemory(memory);
+    this.renderResidentHome();
+
+    console.log("[Resident Ready] Loaded resident profile from backend.", memory.profile.email);
+
+    return memory.profile;
+  },
+
+  async saveResidentProfileToBackend(profile = this.getResidentProfile()) {
+    if (!this.hasValidResidentBackendSession()) {
+      return null;
+    }
+
+    const data = await this.residentApiFetch("saveResidentProfile", {
+      method: "POST",
+      body: JSON.stringify({
+        profile
+      })
+    });
+
+    console.log("[Resident Ready] Saved resident profile to backend.", data.profile?.email);
+
+    return data.profile;
+  },
+
+    mergeAttemptRecords(localAttempts = [], backendAttempts = []) {
+    const byId = new Map();
+
+    [...localAttempts, ...backendAttempts].forEach((record) => {
+      if (!record || !record.id) return;
+
+      const existing = byId.get(record.id);
+
+      if (!existing) {
+        byId.set(record.id, record);
+        return;
+      }
+
+      const existingTime = new Date(existing.savedAt || 0).getTime();
+      const recordTime = new Date(record.savedAt || 0).getTime();
+
+      byId.set(record.id, recordTime >= existingTime ? record : existing);
+    });
+
+    return Array.from(byId.values())
+      .sort((a, b) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0))
+      .slice(0, 50);
+  },
+
+  async loadResidentAttemptsFromBackend() {
+    if (!this.hasValidResidentBackendSession()) {
+      return [];
+    }
+
+    const data = await this.residentApiFetch("getResidentAttempts", {
+      method: "GET"
+    });
+
+    const backendAttempts = Array.isArray(data.attempts) ? data.attempts : [];
+
+    if (!backendAttempts.length) {
+      return [];
+    }
+
+    const memory = this.getResidentMemory();
+
+    memory.attempts = backendAttempts;
+    this.saveResidentMemory(memory);
+
+    this.loadSavedResidentData();
+
+    const activeView = document.querySelector(".app-view.active-view");
+
+    if (!activeView || activeView.id === "launchView") {
+      this.renderResidentHome();
+    }
+
+    this.renderCloudSaveState("Cloud save connected. Profile and attempts are saving to Resident Ready.");
+
+    console.log("[Resident Ready] Loaded resident attempts from backend.", mergedAttempts.length);
+
+    return mergedAttempts;
+  },
+
+  async saveResidentAttemptToBackend(record) {
+    if (!this.hasValidResidentBackendSession()) {
+      return null;
+    }
+
+    const data = await this.residentApiFetch("saveResidentAttempt", {
+      method: "POST",
+      body: JSON.stringify({
+        record
+      })
+    });
+
+    window.latestResidentReadySaveResponse = data;
+
+    console.log("[Resident Ready] Saved resident attempt to backend.", data.record?.id);
+    console.log("[Resident Ready] Full save response:", data);
+    console.log("[Resident Ready] Faculty index save info:", data.facultyIndex);
+
+    return data.record;
+  },
+
 
   saveGoogleIdentityToProfile(googleProfile) {
     const memory = this.getResidentMemory();
@@ -416,181 +690,194 @@ window.App = {
   },
 
   signOutGoogleIdentity() {
-    const memory = this.getResidentMemory();
-    const existingProfile = memory.profile || {};
-
-    memory.profile = {
-      ...existingProfile,
-      authProvider: "local",
-      userId: null,
-      email: null,
-      pictureUrl: null,
-      googleName: null,
-      googleCredentialSavedAt: null,
-      updatedAt: new Date().toISOString()
-    };
-
-    this.saveResidentMemory(memory);
-
-    this.disconnectDriveSave();
+    this.clearResidentBackendSession();
+    this.clearResidentMemory();
+    this.clearResidentRuntimeState();
 
     if (window.google && window.google.accounts && window.google.accounts.id) {
       window.google.accounts.id.disableAutoSelect();
     }
 
     this.renderResidentHome();
+
+    this.renderGrowthInsights();
+
+    if (window.ResidentDashboardUI && typeof window.ResidentDashboardUI.clear === "function") {
+      window.ResidentDashboardUI.clear();
+    }
+
+    this.renderCloudSaveState("Signed out. Sign in with Google to load your Resident Ready data.");
   },
 
-    initDriveAuthorization() {
-    this.renderDriveSaveState();
-
-    if (!this.isGoogleClientConfigured()) {
-      return;
+  async loadResidentOrganizations() {
+    if (!this.hasValidResidentBackendSession()) {
+      this.latestResidentOrganizationMemberships = [];
+      this.renderResidentInstitutionPanel();
+      return [];
     }
 
-    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-      setTimeout(() => this.initDriveAuthorization(), 300);
-      return;
-    }
-
-    this.driveTokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: this.GOOGLE_CLIENT_ID,
-      scope: this.GOOGLE_DRIVE_SCOPE,
-      callback: (response) => this.handleDriveTokenResponse(response),
-      error_callback: (error) => {
-        console.warn("[Resident Ready] Drive authorization error.", error);
-        this.driveAuthorizationInProgress = false;
-        this.driveAccessToken = null;
-        this.driveTokenExpiresAt = null;
-        this.renderDriveSaveState("Drive authorization was cancelled or did not complete. Use Connect Drive Save to try again.");
-      }
+    const data = await this.residentApiFetch("getMyOrganizations", {
+      method: "GET"
     });
 
-    this.renderDriveSaveState();
+    this.latestResidentOrganizationMemberships = Array.isArray(data.memberships)
+      ? data.memberships
+      : [];
+
+    this.renderResidentInstitutionPanel();
+
+    console.log(
+      "[Resident Ready] Loaded resident organization memberships.",
+      this.latestResidentOrganizationMemberships
+    );
+
+    return this.latestResidentOrganizationMemberships;
   },
 
-  requestDriveAccess(options = {}) {
-    const profile = this.getResidentProfile();
-    const isAutomatic = !!options.autoAfterSignIn;
+  getActiveResidentMembership() {
+    const memberships = Array.isArray(this.latestResidentOrganizationMemberships)
+      ? this.latestResidentOrganizationMemberships
+      : [];
 
-    if (!profile?.authProvider || profile.authProvider !== "google" || !profile.email) {
-      if (!isAutomatic) {
-        alert("Please sign in with Google before connecting Drive Save.");
-      }
-
-      this.renderDriveSaveState("Sign in with Google first.");
-      return;
-    }
-
-    if (!this.driveTokenClient) {
-      this.initDriveAuthorization();
-    }
-
-    if (!this.driveTokenClient) {
-      if (!isAutomatic) {
-        alert("Drive authorization is still loading. Please try again in a moment.");
-      }
-
-      this.renderDriveSaveState("Drive authorization is still loading. Please try again in a moment.");
-      return;
-    }
-
-    this.driveAuthorizationInProgress = true;
-    this.renderDriveSaveState("Requesting Drive Save permission...");
-
-    this.driveTokenClient.requestAccessToken({
-      prompt: this.hasValidDriveAccessToken() ? "" : "consent"
-    });
-  },
-
-  handleDriveTokenResponse(response) {
-    this.driveAuthorizationInProgress = false;
-
-    if (!response || response.error) {
-      console.warn("[Resident Ready] Drive token response error.", response);
-      this.driveAccessToken = null;
-      this.driveTokenExpiresAt = null;
-      this.renderDriveSaveState("Drive authorization did not complete. Use Connect Drive Save to try again.");
-      return;
-    }
-
-    if (!response.access_token) {
-      this.driveAccessToken = null;
-      this.driveTokenExpiresAt = null;
-      this.renderDriveSaveState("Drive authorization did not return an access token. Use Connect Drive Save to try again.");
-      return;
-    }
-
-    const expiresInSeconds = Number(response.expires_in || 3600);
-
-    this.driveAccessToken = response.access_token;
-    this.driveTokenExpiresAt = Date.now() + expiresInSeconds * 1000;
-
-    this.renderDriveSaveState("Drive Save connected for this session.");
-  },
-
-  hasValidDriveAccessToken() {
-    return !!(
-      this.driveAccessToken &&
-      this.driveTokenExpiresAt &&
-      Date.now() < this.driveTokenExpiresAt - 60000
+    return (
+      memberships.find((membership) =>
+        membership &&
+        membership.status === "active" &&
+        membership.role === "resident" &&
+        membership.organizationId
+      ) ||
+      memberships.find((membership) =>
+        membership &&
+        membership.status === "active" &&
+        membership.organizationId
+      ) ||
+      null
     );
   },
 
-  disconnectDriveSave() {
-    if (
-      this.driveAccessToken &&
-      window.google &&
-      window.google.accounts &&
-      window.google.accounts.oauth2 &&
-      typeof window.google.accounts.oauth2.revoke === "function"
-    ) {
-      window.google.accounts.oauth2.revoke(this.driveAccessToken, () => {
-        console.log("[Resident Ready] Drive token revoked.");
-      });
+  renderResidentInstitutionPanel() {
+    const title = document.getElementById("residentInstitutionTitle");
+    const description = document.getElementById("residentInstitutionDescription");
+    const chips = document.getElementById("residentInstitutionChips");
+    const form = document.getElementById("residentJoinInstitutionForm");
+    const status = document.getElementById("residentJoinInstitutionStatus");
+
+    if (!title || !description || !chips || !form || !status) return;
+
+    if (!this.hasValidResidentBackendSession()) {
+      title.textContent = "Join your institution";
+      description.textContent =
+        "Sign in with Google, then enter the access code your program or faculty member shared with you.";
+      chips.innerHTML = `
+        <span>Google sign-in required</span>
+        <span>Resident access code</span>
+      `;
+      form.classList.add("hidden");
+      status.textContent =
+        "Sign in first to connect your Resident Ready account to an institution.";
+      status.className = "resident-join-status";
+      return;
     }
 
-    this.driveAuthorizationInProgress = false;
-    this.driveAccessToken = null;
-    this.driveTokenExpiresAt = null;
-    this.renderDriveSaveState();
+    const activeMembership = this.getActiveResidentMembership();
+
+    if (activeMembership) {
+      title.textContent = activeMembership.organizationName || "Institution connected";
+      description.textContent =
+        `You are connected as ${activeMembership.roleLabel || activeMembership.role || "Resident"}${activeMembership.activeCohortLabel ? ` in ${activeMembership.activeCohortLabel}` : ""}. New attempts will save to this organization for faculty-safe review.`;
+
+      chips.innerHTML = `
+        <span>${activeMembership.organizationName || "Institution connected"}</span>
+        <span>${activeMembership.activeCohortLabel || activeMembership.activeCohortId || "Unassigned"}</span>
+        <span>${activeMembership.roleLabel || activeMembership.role || "Resident"}</span>
+      `;
+
+      form.classList.add("hidden");
+      status.textContent = "Institution connection active.";
+      status.className = "resident-join-status success";
+      return;
+    }
+
+    title.textContent = "Join your institution";
+    description.textContent =
+      "Enter the resident access code shared by your program, faculty member, or administrator.";
+    chips.innerHTML = `
+      <span>Signed in</span>
+      <span>Ready for access code</span>
+    `;
+    form.classList.remove("hidden");
+    status.textContent =
+      "No institution connected yet. Enter your code to join your program cohort.";
+    status.className = "resident-join-status";
   },
 
-  renderDriveSaveState(customMessage = "") {
-    const status = document.getElementById("googleDriveSaveStatus");
-    const connectBtn = document.getElementById("connectDriveSaveBtn");
+  async joinOrganizationWithCode() {
+    const input = document.getElementById("residentAccessCodeInput");
+    const status = document.getElementById("residentJoinInstitutionStatus");
 
-    if (!status || !connectBtn) return;
+    if (!input || !status) return;
+
+    const code = input.value.trim();
+
+    if (!this.hasValidResidentBackendSession()) {
+      status.textContent = "Please sign in with Google before entering an institution code.";
+      status.className = "resident-join-status error";
+      return;
+    }
+
+    if (!code) {
+      status.textContent = "Enter the access code your program shared with you.";
+      status.className = "resident-join-status error";
+      input.focus();
+      return;
+    }
+
+    status.textContent = "Checking access code...";
+    status.className = "resident-join-status";
+
+    try {
+      const data = await this.residentApiFetch("joinOrganizationWithCode", {
+        method: "POST",
+        body: JSON.stringify({ code })
+      });
+
+      input.value = "";
+
+      await this.loadResidentOrganizations();
+
+      status.textContent =
+        `Connected to ${data.organization?.organizationName || "your institution"}${data.cohort?.label ? ` · ${data.cohort.label}` : ""}.`;
+      status.className = "resident-join-status success";
+
+      this.renderCloudSaveState("Institution connected. New attempts will save to your organization.");
+      this.renderResidentHome();
+
+      console.log("[Resident Ready] Resident joined organization.", data);
+    } catch (error) {
+      console.warn("[Resident Ready] Could not join organization.", error);
+      status.textContent = error.message || "Could not join institution with that access code.";
+      status.className = "resident-join-status error";
+    }
+  },
+
+
+  renderCloudSaveState(customMessage = "") {
+    const status = document.getElementById("cloudSaveStatus");
+    if (!status) return;
 
     const profile = this.getResidentProfile();
 
-    if (!this.isGoogleClientConfigured()) {
-      status.textContent = "Add your Google Web Client ID before connecting Drive Save.";
-      connectBtn.classList.add("hidden");
-      return;
-    }
-
     if (!profile?.authProvider || profile.authProvider !== "google" || !profile.email) {
-      status.textContent = "Sign in with Google first.";
-      connectBtn.classList.add("hidden");
+      status.textContent = customMessage || "Sign in with Google to save your profile and attempts across devices.";
       return;
     }
 
-    if (this.driveAuthorizationInProgress) {
-      status.textContent = customMessage || "Requesting Drive Save permission...";
-      connectBtn.classList.add("hidden");
+    if (this.hasValidResidentBackendSession()) {
+      status.textContent = customMessage || "Cloud save connected. Profile and attempts are saving to Resident Ready.";
       return;
     }
 
-    if (this.hasValidDriveAccessToken()) {
-      status.textContent = customMessage || "Drive Save connected for this session.";
-      connectBtn.classList.add("hidden");
-      return;
-    }
-
-    status.textContent = customMessage || "Drive Save needs permission.";
-    connectBtn.textContent = "Connect Drive Save";
-    connectBtn.classList.remove("hidden");
+    status.textContent = customMessage || "Google connected. Cloud save will finish connecting after sign-in.";
   },
 
   renderGoogleSignInState() {
@@ -604,11 +891,11 @@ window.App = {
 
     if (profile?.authProvider === "google" && profile?.email) {
       status.textContent =
-        `Signed in as ${profile.email}. Drive saving will be added next.`;
+        `Signed in as ${profile.email}.`;
 
       signOutBtn.classList.remove("hidden");
       buttonContainer.innerHTML = "";
-      this.renderDriveSaveState();
+      this.renderCloudSaveState();
       return;
     }
 
@@ -618,7 +905,7 @@ window.App = {
 
     signOutBtn.classList.add("hidden");
     this.renderGoogleSignInButton();
-    this.renderDriveSaveState();
+    this.renderCloudSaveState();
   },
 
 
@@ -642,11 +929,127 @@ window.App = {
     const memory = this.getResidentMemory();
     const latestRecord = this.getDiagnosticAttempts(memory)[0];
 
-    if (!latestRecord) return;
+    if (!latestRecord) {
+      window.latestScoredAttempt = null;
+      window.latestFacultySummary = null;
+      window.latestStudentFeedback = null;
+      return;
+    }
 
     window.latestScoredAttempt = latestRecord.scoredAttempt;
     window.latestFacultySummary = latestRecord.facultySummary;
     window.latestStudentFeedback = latestRecord.studentFeedback;
+  },
+
+  getQuestionById(questionId) {
+    const questions = window.MED_SAMPLE_QUESTIONS || [];
+    return questions.find((question) => question.id === questionId) || null;
+  },
+
+  normalizeAnswerChoices(question = {}) {
+    const rawChoices =
+      question.answerChoices ||
+      question.choices ||
+      question.options ||
+      [];
+
+    if (!Array.isArray(rawChoices)) return [];
+
+    return rawChoices.map((choice, index) => {
+      if (typeof choice === "string") {
+        return {
+          id: String.fromCharCode(65 + index),
+          label: String.fromCharCode(65 + index),
+          text: choice
+        };
+      }
+
+      return {
+        id: choice.id || choice.value || choice.label || String.fromCharCode(65 + index),
+        label: choice.label || choice.id || choice.value || String.fromCharCode(65 + index),
+        text: choice.text || choice.answer || choice.content || ""
+      };
+    });
+  },
+
+  getQuestionCorrectAnswer(question = {}, result = {}) {
+    return (
+      result.correctAnswer ||
+      result.correctChoice ||
+      result.correctOption ||
+      question.correctAnswer ||
+      question.correctChoice ||
+      question.correctOption ||
+      question.answer ||
+      null
+    );
+  },
+
+  getQuestionRationale(question = {}, result = {}) {
+    return (
+      result.rationale ||
+      result.explanation ||
+      question.rationale ||
+      question.explanation ||
+      question.correctRationale ||
+      ""
+    );
+  },
+
+  buildFacultySafeReviewSnapshot(scoredAttempt = {}) {
+    const results = Array.isArray(scoredAttempt.results) ? scoredAttempt.results : [];
+
+    return {
+      version: 1,
+      createdAt: new Date().toISOString(),
+      reviewItems: results.map((result, index) => {
+        const question = this.getQuestionById(result.questionId);
+        const answerChoices = this.normalizeAnswerChoices(question || {});
+        const correctAnswer = this.getQuestionCorrectAnswer(question || {}, result);
+        const selectedAnswer =
+          result.selectedAnswer ||
+          result.selectedChoice ||
+          result.selectedOption ||
+          result.answer ||
+          null;
+
+        return {
+          questionNumber: index + 1,
+          questionId: result.questionId || null,
+          stem:
+            question?.stem ||
+            question?.questionStem ||
+            question?.question ||
+            result.stem ||
+            "",
+          answerChoices,
+          selectedAnswer,
+          correctAnswer,
+          isCorrect: !!result.isCorrect,
+          rationale: this.getQuestionRationale(question || {}, result),
+          clinicalReasoningTakeaway:
+            question?.clinicalReasoningTakeaway ||
+            question?.takeaway ||
+            result.clinicalReasoningTakeaway ||
+            "",
+          tags: question?.tags || result.tags || {},
+          system:
+            question?.system ||
+            question?.tags?.system ||
+            result.system ||
+            null,
+          clinicalTask:
+            question?.clinicalTask ||
+            question?.tags?.clinicalTask ||
+            result.clinicalTask ||
+            null,
+          errorPattern:
+            result.errorPattern ||
+            result.errorTag ||
+            null
+        };
+      })
+    };
   },
 
   saveResidentAttempt(scoredAttempt, facultySummary, studentFeedback, metadata = {}) {
@@ -655,12 +1058,27 @@ window.App = {
     const focusTag = metadata.focusTag || scoredAttempt?.focusTag || null;
     const focusLabel = metadata.focusLabel || scoredAttempt?.focusLabel || null;
 
-    const record = {
-      id: `attempt-${Date.now()}`,
-      savedAt: new Date().toISOString(),
-      type,
-      focusTag,
-      focusLabel,
+    const profile = this.getResidentProfile() || {};
+
+    const attemptId = `attempt-${Date.now()}`;
+
+      const record = {
+        id: attemptId,
+        savedAt: new Date().toISOString(),
+        type,
+        focusTag,
+        focusLabel,
+        assignmentContext: metadata.assignmentContext || null,
+        facultyReviewSnapshot: this.buildFacultySafeReviewSnapshot(scoredAttempt),
+        residentProfileSnapshot: {
+        displayName: profile.displayName || "",
+        specialtyTrack: profile.specialtyTrack || "",
+        programYear: profile.programYear || "",
+        boardGoal: profile.boardGoal || "",
+        preferredStudyStyle: profile.preferredStudyStyle || "",
+        email: profile.email || null,
+        googleName: profile.googleName || null
+      },
       scoredAttempt: {
         ...scoredAttempt,
         type,
@@ -671,9 +1089,15 @@ window.App = {
       studentFeedback
     };
 
-    memory.attempts = [record, ...(memory.attempts || [])].slice(0, 20);
+    memory.attempts = [record, ...(memory.attempts || [])].slice(0, 50);
 
     this.saveResidentMemory(memory);
+
+    if (this.hasValidResidentBackendSession()) {
+      this.saveResidentAttemptToBackend(record).catch((error) => {
+        console.warn("[Resident Ready] Could not save resident attempt to backend.", error);
+      });
+    }
   },
 
   renderLatestAttemptPanel(scoredAttempt) {
@@ -794,6 +1218,16 @@ window.App = {
   renderGrowthInsights() {
     const panel = document.getElementById("growthInsightsPanel");
     if (!panel) return;
+
+    if (!window.latestScoredAttempt) {
+      panel.innerHTML = `
+        <div class="growth-empty-state">
+          <strong>Growth insights unlock after 2 diagnostics.</strong>
+          <p>Sign in and complete diagnostics to compare your score, strengths, and priority review areas over time.</p>
+        </div>
+      `;
+      return;
+    }
 
     const memory = this.getResidentMemory();
     const attempts = this.getDiagnosticAttempts(memory);
@@ -1236,10 +1670,22 @@ window.App = {
   },
 
 init() {
-  this.loadSavedResidentData();
+  if (this.hasValidResidentBackendSession()) {
+    this.loadSavedResidentData();
+  } else {
+    this.clearResidentRuntimeState();
+  }
+
   this.renderResidentHome();
   this.initGoogleSignIn();
-  this.initDriveAuthorization();
+
+  this.loadResidentProfileFromBackend()
+    .then(() => this.loadResidentOrganizations())
+    .then(() => this.loadResidentAttemptsFromBackend())
+    .catch((error) => {
+      console.warn("[Resident Ready] Could not load backend resident data on startup.", error);
+      this.renderResidentInstitutionPanel();
+    });
 
   const startBtn = document.getElementById("startDiagnosticBtn");
   if (startBtn) {
@@ -1277,10 +1723,19 @@ init() {
     });
   }
 
-  const connectDriveSaveBtn = document.getElementById("connectDriveSaveBtn");
-  if (connectDriveSaveBtn) {
-    connectDriveSaveBtn.addEventListener("click", () => {
-      this.requestDriveAccess();
+  const joinInstitutionBtn = document.getElementById("joinInstitutionBtn");
+  if (joinInstitutionBtn) {
+    joinInstitutionBtn.addEventListener("click", () => {
+      this.joinOrganizationWithCode();
+    });
+  }
+
+  const residentAccessCodeInput = document.getElementById("residentAccessCodeInput");
+  if (residentAccessCodeInput) {
+    residentAccessCodeInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      this.joinOrganizationWithCode();
     });
   }
 
@@ -1288,7 +1743,7 @@ init() {
   if (googleSignOutBtn) {
     googleSignOutBtn.addEventListener("click", () => {
       const shouldSignOut = window.confirm(
-        "Sign out of Google on this device? Your local Resident Ready profile and attempts will stay saved in this browser."
+        "Sign out of Google on this device? This will clear resident data from this browser until someone signs in again."
       );
 
       if (!shouldSignOut) return;
@@ -1311,21 +1766,6 @@ init() {
     });
   }
 
-  const viewFacultyBtn = document.getElementById("viewFacultyDashboardBtn");
-  if (viewFacultyBtn) {
-    viewFacultyBtn.addEventListener("click", () => {
-      window.FacultyDashboardUI.render();
-      this.showView("facultyDashboardView");
-    });
-  }
-
-  const viewFacultyFromResultsBtn = document.getElementById("viewFacultyDashboardFromResultsBtn");
-  if (viewFacultyFromResultsBtn) {
-    viewFacultyFromResultsBtn.addEventListener("click", () => {
-      window.FacultyDashboardUI.render();
-      this.showView("facultyDashboardView");
-    });
-  }
 
   const backToResidentResultsBtn = document.getElementById("backToResidentResultsBtn");
   if (backToResidentResultsBtn) {
@@ -1469,14 +1909,6 @@ if (backToResidentDashboardBtn) {
     });
   }
 
-  const backToFacultyDashboardBtn = document.getElementById("backToFacultyDashboardBtn");
-  if (backToFacultyDashboardBtn) {
-    backToFacultyDashboardBtn.addEventListener("click", () => {
-      window.FacultyDashboardUI.render();
-      this.showView("facultyDashboardView");
-    });
-  }
-
   const backToResidentDashboardFromReviewBtn = document.getElementById("backToResidentDashboardFromReviewBtn");
   if (backToResidentDashboardFromReviewBtn) {
     backToResidentDashboardFromReviewBtn.addEventListener("click", () => {
@@ -1513,7 +1945,7 @@ if (backToResidentDashboardBtn) {
     });
   }
 
-    const homeLink = document.getElementById("doctorDashboardHomeLink");
+  const homeLink = document.getElementById("doctorDashboardHomeLink");
   if (homeLink) {
     homeLink.addEventListener("click", () => {
       this.showView("launchView");

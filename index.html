@@ -7,7 +7,7 @@
   <title>Resident Ready</title>
 </head>
 
-<body>
+<body class="resident-page">
   <header>
     <div class="header-content">
       <div>
@@ -43,19 +43,16 @@
               </p>
             </div>
 
-            <div class="header-drive-status">
-              <strong>Drive Save</strong>
-              <p id="googleDriveSaveStatus">
-                Not connected yet.
+            <div class="header-cloud-save-status">
+              <strong>Cloud Save</strong>
+              <p id="cloudSaveStatus">
+                Sign in with Google to save your profile and attempts across devices.
               </p>
             </div>
           </div>
 
           <div class="header-google-auth-actions">
             <div id="googleSignInButton"></div>
-            <button id="connectDriveSaveBtn" class="secondary hidden" type="button">
-              Connect Drive Save
-            </button>
             <button id="googleSignOutBtn" class="secondary hidden" type="button">
               Sign Out
             </button>
@@ -167,6 +164,39 @@
               <button id="cancelResidentProfileBtn" class="secondary" type="button">Cancel</button>
             </div>
           </div>
+        </section>
+
+        <section id="residentInstitutionCard" class="resident-profile-card resident-institution-card">
+          <div class="resident-profile-summary-view">
+            <div>
+              <p class="eyebrow-label">Institution Access</p>
+              <h3 id="residentInstitutionTitle">Join your institution</h3>
+              <p id="residentInstitutionDescription">
+                Sign in with Google, then enter the access code your program or faculty member shared with you.
+              </p>
+              <div id="residentInstitutionChips" class="resident-profile-chips"></div>
+            </div>
+          </div>
+
+          <div id="residentJoinInstitutionForm" class="resident-join-institution-form">
+            <label for="residentAccessCodeInput">
+              Resident access code
+              <input
+                id="residentAccessCodeInput"
+                type="text"
+                placeholder="Enter access code"
+                autocomplete="off"
+              />
+            </label>
+
+            <button id="joinInstitutionBtn" type="button">
+              Join Institution
+            </button>
+          </div>
+
+          <p id="residentJoinInstitutionStatus" class="resident-join-status">
+            Sign in first to connect your Resident Ready account to an institution.
+          </p>
         </section>
 
         <div id="residentHomeStats" class="metric-row">
@@ -400,66 +430,6 @@
           <button id="reviewDiagnosticFromResultsBtn" class="secondary">Review Full Diagnostic</button>
           <button id="backToResidentDashboardBtn" class="secondary">Back to Main Dashboard</button>
         </div>
-      </div>
-    </section>
-
-    <!-- Faculty Dashboard View -->
-    <section id="facultyDashboardView" class="app-view">
-      <div class="dashboard-grid">
-        <section class="card">
-          <h2>Faculty Summary</h2>
-
-          <div class="metric-row">
-            <div class="metric">
-              <strong id="scorePercent">--%</strong>
-              <span>Diagnostic Score</span>
-            </div>
-
-            <div class="metric">
-              <strong id="questionCount">--</strong>
-              <span>Questions Completed</span>
-            </div>
-
-            <div class="metric">
-              <strong id="riskLevel">--</strong>
-              <span>Board Readiness Signal</span>
-            </div>
-          </div>
-
-          <h3 class="section-title">Strongest Areas</h3>
-          <div id="strengthTags" class="tag-list"></div>
-
-          <h3 class="section-title">Priority Review Areas</h3>
-          <div id="weaknessTags" class="tag-list"></div>
-
-          <h3 class="section-title">Clinical Decision Performance</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Clinical Decision</th>
-                  <th>Correct</th>
-                  <th>Total</th>
-                  <th>Accuracy</th>
-                </tr>
-              </thead>
-              <tbody id="clinicalDecisionTable"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <aside class="card">
-          <h2>Risk Alerts</h2>
-          <div id="riskAlerts"></div>
-
-          <h3 class="section-title">Top Error Patterns</h3>
-          <div id="errorTags" class="tag-list"></div>
-
-          <div class="button-row">
-            <button id="viewDiagnosticDetailsBtn" class="secondary">View Diagnostic Details</button>
-            <button id="backToResidentResultsBtn" class="secondary">Back to Resident Results</button>
-          </div>
-        </aside>
       </div>
     </section>
 

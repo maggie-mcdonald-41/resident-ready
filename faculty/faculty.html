@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../styles.css" />
+  <title>Resident Ready Faculty Preview</title>
+</head>
+
+<body class="faculty-page">
+  <header>
+    <div class="header-content">
+      <div>
+        <h1 class="dashboard-title-link" tabindex="0">
+          Resident Ready Faculty
+        </h1>
+        <p>
+          Faculty-safe cohort insights, resident progress, and assessment review.
+        </p>
+      </div>
+
+      <div class="header-toggles">
+        <button id="themeToggleBtn" class="toggle-btn" type="button" aria-pressed="false">
+          <span class="toggle-track">
+            <span class="toggle-dot"></span>
+          </span>
+          <span class="toggle-label">Dark Mode</span>
+        </button>
+
+        <button id="fontToggleBtn" class="toggle-btn" type="button" aria-pressed="false">
+          <span class="toggle-track">
+            <span class="toggle-dot"></span>
+          </span>
+          <span class="toggle-label">Dyslexia Font</span>
+        </button>
+
+        <div class="header-google-auth-box">
+          <div class="header-account-status-stack">
+            <div>
+              <strong>Faculty Account</strong>
+              <p id="facultySignInStatus">
+                Sign in with Google to load the faculty dashboard.
+              </p>
+            </div>
+
+            <div class="header-cloud-save-status">
+              <strong>Organization Access</strong>
+              <p id="facultyAccessStatus">
+                Sign in to load your organization-scoped faculty dashboard.
+              </p>
+            </div>
+          </div>
+
+          <div class="header-google-auth-actions">
+            <div id="facultyGoogleSignInButton"></div>
+            <button id="facultySignOutBtn" class="secondary hidden" type="button">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="facultyPreviewView" class="app-view active-view">
+      <div class="card faculty-preview-card">
+        <div class="results-header">
+          <div>
+            <p class="eyebrow-label">Faculty Dashboard</p>
+            <h2>Faculty Cohort Snapshot</h2>
+            <p id="facultyPreviewDescription">
+              Organization-scoped faculty view using the backend faculty-safe index. This view shows roster,
+              recent attempts, and faculty-safe review details without resident notes, highlights, or cross-outs.
+            </p>
+          </div>
+
+          <div class="results-score-badge">
+            <span>Residents</span>
+            <strong id="facultyPreviewResidentCount">--</strong>
+          </div>
+        </div>
+
+        <div id="facultyPreviewStatus" class="dashboard-card-note">
+          Sign in with Google to load the faculty dashboard.
+        </div>
+
+                <section class="faculty-onboarding-panel">
+          <div>
+            <p class="eyebrow-label">Setup Checklist</p>
+            <h3>Institution Onboarding</h3>
+            <p>
+              Use these steps to prepare your Resident Ready organization for residents and faculty-safe monitoring.
+            </p>
+          </div>
+
+          <div class="faculty-onboarding-steps">
+            <div class="faculty-onboarding-step">
+              <span>1</span>
+              <div>
+                <strong>Select your organization</strong>
+                <p>Choose the institution or program you want to manage.</p>
+              </div>
+            </div>
+
+            <div class="faculty-onboarding-step">
+              <span>2</span>
+              <div>
+                <strong>Create your first cohort</strong>
+                <p>Examples: PGY-1 2026, Family Medicine, Board Prep Group.</p>
+              </div>
+            </div>
+
+            <div class="faculty-onboarding-step">
+              <span>3</span>
+              <div>
+                <strong>Create a resident access code</strong>
+                <p>Share the one-year code with residents so they can join the correct cohort.</p>
+              </div>
+            </div>
+
+            <div class="faculty-onboarding-step">
+              <span>4</span>
+              <div>
+                <strong>Review resident progress</strong>
+                <p>After residents complete attempts, roster, scores, and faculty-safe reviews will appear below.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="faculty-organization-control-panel">
+          <div>
+            <p class="eyebrow-label">Institution Access</p>
+            <h3>Select an Organization</h3>
+            <p>
+              Faculty and admins will only see organizations where they have an active Resident Ready role.
+            </p>
+          </div>
+
+          <div class="faculty-organization-actions">
+            <label for="facultyOrganizationSelect">
+              Organization
+              <select id="facultyOrganizationSelect">
+                <option value="">Sign in to load organizations</option>
+              </select>
+            </label>
+
+            <button id="refreshOrganizationsBtn" class="secondary" type="button">
+              Refresh Organizations
+            </button>
+          </div>
+        </section>
+
+        <section class="faculty-add-adult-panel">
+          <div>
+            <p class="eyebrow-label">Faculty/Admin Access</p>
+            <h3>Add Faculty or Admin</h3>
+            <p>
+              Add another adult to this organization by email. They will see this organization after signing in with Google using that email address.
+            </p>
+          </div>
+
+          <div class="faculty-add-adult-actions">
+            <label for="adultMemberEmailInput">
+              Email
+              <input
+                id="adultMemberEmailInput"
+                type="email"
+                placeholder="faculty@example.edu"
+                autocomplete="email"
+              />
+            </label>
+
+            <label for="adultMemberRoleSelect">
+              Role
+              <select id="adultMemberRoleSelect">
+                <option value="faculty">Faculty</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+
+            <button id="addAdultMemberBtn" class="secondary" type="button">
+              Add Member
+            </button>
+          </div>
+
+          <p id="addAdultMemberStatus" class="dashboard-card-note add-adult-status">
+            Primary Admins can add Admins or Faculty. Admins can add Faculty.
+          </p>
+        </section>
+
+        <section class="faculty-cohort-control-panel">
+          <div>
+            <p class="eyebrow-label">Cohort Controls</p>
+            <h3>Select a Cohort</h3>
+            <p>
+              Faculty will eventually be able to create, rename, archive, and promote cohorts year to year.
+            </p>
+          </div>
+
+          <div class="faculty-cohort-actions">
+            <label for="facultyCohortSelect">
+              Cohort
+              <select id="facultyCohortSelect">
+                <option value="all">All Cohorts</option>
+              </select>
+            </label>
+
+            <label for="newCohortNameInput">
+              New Cohort
+              <input
+                id="newCohortNameInput"
+                type="text"
+                placeholder="Example: PGY-1 2026"
+                autocomplete="off"
+              />
+            </label>
+
+            <button id="createCohortBtn" class="secondary" type="button">
+              Create Cohort
+            </button>
+
+            <button id="manageCohortsBtn" class="secondary" type="button">
+              Manage Cohorts
+            </button>
+
+          </div>
+
+          <p id="createCohortStatus" class="dashboard-card-note cohort-create-status">
+            Create a cohort first, then generate a resident access code for that cohort.
+          </p>
+
+          <div id="manageCohortsPanel" class="manage-cohorts-panel hidden">
+            <div class="manage-cohorts-header">
+              <div>
+                <strong>Manage Cohorts</strong>
+                <p>
+                  Rename cohorts, archive cohorts you no longer want in active workflows, or restore archived cohorts later.
+                </p>
+              </div>
+            </div>
+
+            <div id="manageCohortsList" class="manage-cohorts-list">
+              Cohorts will load after selecting an organization.
+            </div>
+
+            <p id="manageCohortsStatus" class="dashboard-card-note manage-cohorts-status">
+              Archived cohorts are hidden from active selectors but remain available for history and restoration.
+            </p>
+          </div>
+        </section>
+
+        <section class="faculty-promote-cohort-panel">
+          <div>
+            <p class="eyebrow-label">Cohort Promotion</p>
+            <h3>Promote Residents</h3>
+            <p>
+              Move all active residents from one cohort into another. Attempts stay historically connected to the cohort where they were completed.
+            </p>
+          </div>
+
+          <div class="faculty-promote-cohort-actions">
+            <label for="promoteSourceCohortSelect">
+              From Cohort
+              <select id="promoteSourceCohortSelect">
+                <option value="">Select source cohort</option>
+              </select>
+            </label>
+
+            <label for="promoteTargetCohortSelect">
+              To Cohort
+              <select id="promoteTargetCohortSelect">
+                <option value="">Select target cohort</option>
+              </select>
+            </label>
+
+            <button id="promoteCohortBtn" class="secondary" type="button">
+              Promote Residents
+            </button>
+          </div>
+
+          <p id="promoteCohortStatus" class="dashboard-card-note promote-cohort-status">
+            Create or select a target cohort before promoting residents.
+          </p>
+        </section>
+
+        <section class="faculty-access-code-panel">
+          <div>
+            <p class="eyebrow-label">Resident Access</p>
+            <h3>Create Resident Access Code</h3>
+            <p>
+              Generate a one-year resident join code for the selected cohort. Residents will enter this code from their Resident Ready dashboard.
+            </p>
+          </div>
+
+          <div class="faculty-access-code-actions">
+            <label for="residentAccessCodeCohortSelect">
+              Target Cohort
+              <select id="residentAccessCodeCohortSelect">
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </label>
+
+            <button id="createResidentAccessCodeBtn" type="button">
+              Create Resident Code
+            </button>
+          </div>
+
+          <div id="residentAccessCodeOutput" class="resident-access-code-output hidden">
+            <div>
+              <span>Generated code</span>
+              <strong id="residentAccessCodeText"></strong>
+              <p id="residentAccessCodeMeta"></p>
+            </div>
+
+            <button id="copyResidentAccessCodeBtn" class="secondary" type="button" disabled>
+              Copy Code
+            </button>
+          </div>
+
+          <p id="residentAccessCodeStatus" class="dashboard-card-note access-code-status">
+            Select a cohort, then create a code to share with residents.
+          </p>
+        </section>
+
+        <section class="faculty-summary-metric-grid">
+          <div class="results-metric">
+            <span>Selected Cohort</span>
+            <strong id="facultySelectedCohortLabel">All</strong>
+          </div>
+
+          <div class="results-metric">
+            <span>Average Latest Score</span>
+            <strong id="facultyAverageScore">--%</strong>
+          </div>
+
+          <div class="results-metric">
+            <span>Needs Follow-Up</span>
+            <strong id="facultyNeedsFollowUpCount">--</strong>
+          </div>
+
+          <div class="results-metric">
+            <span>Recent Attempts</span>
+            <strong id="facultyRecentAttemptCount">--</strong>
+          </div>
+        </section>
+
+        <section class="faculty-cohort-highlights-grid">
+          <div class="dashboard-card">
+            <h3>Cohort Strengths</h3>
+            <p class="dashboard-card-note">
+              Early preview based on recent faculty-safe attempt summaries.
+            </p>
+            <div id="facultyCohortStrengthsList" class="faculty-highlight-list">
+              Select a cohort to view strengths.
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <h3>Cohort Priority Needs</h3>
+            <p class="dashboard-card-note">
+              Early preview based on lower-scoring recent attempts and focus areas.
+            </p>
+            <div id="facultyCohortNeedsList" class="faculty-highlight-list">
+              Select a cohort to view priority needs.
+            </div>
+          </div>
+
+          <div class="dashboard-card full-width">
+            <h3>Cohort Performance Snapshot</h3>
+            <p class="dashboard-card-note">
+              Simplified chart for quickly spotting trends. Deeper tag-level aggregation will come from the backend next.
+            </p>
+            <div id="facultyCohortChart" class="faculty-cohort-chart">
+              Cohort chart will load after selecting a cohort.
+            </div>
+          </div>
+        </section>
+
+        <div class="faculty-preview-grid">
+          <section class="dashboard-card full-width">
+            <h3>Roster</h3>
+            <p class="dashboard-card-note">
+              Residents appear here after they join with a resident access code. Use this roster to monitor progress and move residents between cohorts.
+            </p>
+            <p id="facultyRosterActionStatus" class="dashboard-card-note roster-action-status">
+              Use the cohort selector on a resident row to move that resident to another active cohort.
+            </p>
+            <div id="facultyRosterList" class="attempt-history-list">
+              No roster data loaded yet.
+            </div>
+          </section>
+
+          <section class="dashboard-card">
+            <h3>Recent Attempts</h3>
+            <p class="dashboard-card-note">
+              Recent attempts appear after residents complete diagnostics or practice. Click Review to open the faculty-safe question review.
+            </p>
+            <div id="facultyRecentAttemptsList" class="attempt-history-list">
+              No recent attempt data loaded yet.
+            </div>
+          </section>
+
+          <section class="dashboard-card full-width">
+            <h3>Faculty-Safe Attempt Review</h3>
+            <p class="dashboard-card-note">
+              Shows question stem, answer choices, resident-selected answer, correct answer, and rationale.
+              Resident notes, highlights, and cross-outs are intentionally excluded.
+            </p>
+            <div id="facultyAttemptDetailPanel" class="faculty-attempt-detail-panel">
+              Select a recent attempt to open the faculty-safe review.
+            </div>
+          </section>
+        </div>
+
+        <div class="button-row">
+          <button id="refreshFacultyPreviewBtn" type="button">Refresh Faculty Dashboard</button>
+          <a href="../index.html" class="secondary button-link">Open Resident App</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    © 2026 McDonald Medical Education Solutions. All rights reserved.
+  </footer>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="faculty-app.js"></script>
+</body>
+</html>

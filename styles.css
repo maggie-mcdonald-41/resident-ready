@@ -83,11 +83,6 @@
   min-width: 0;
 }
 
-.header-drive-status {
-  padding-top: 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-}
-
 .header-google-auth-box strong {
   display: block;
   margin-bottom: 3px;
@@ -439,6 +434,33 @@ body.dark-mode .remediation-item {
     button.secondary {
       background: var(--blue-slate);
     }
+
+      .button-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .button-link.secondary,
+  a.secondary.button-link {
+    background: var(--blue-slate);
+    color: var(--white);
+  }
+
+  .button-link:hover {
+    filter: brightness(1.08);
+  }
+
+  .button-link:focus-visible {
+    outline: 3px solid var(--warning);
+    outline-offset: 3px;
+  }
 
     @media (max-width: 900px) {
   .dashboard-grid,
@@ -1874,6 +1896,56 @@ body.dark-mode .results-metric span {
   font-family: Consolas, Monaco, monospace;
 }
 
+.resident-institution-card {
+  background: rgba(120, 0, 0, 0.07);
+  border-color: rgba(120, 0, 0, 0.16);
+}
+
+.resident-join-institution-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 16px;
+}
+
+.resident-join-institution-form.hidden {
+  display: none;
+}
+
+.resident-join-institution-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.resident-join-institution-form input {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 1rem;
+  background: var(--white);
+  color: var(--ink-black);
+  text-transform: uppercase;
+}
+
+.resident-join-status {
+  margin: 12px 0 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.resident-join-status.success {
+  color: #1f7a3f;
+}
+
+.resident-join-status.error {
+  color: var(--medical-red);
+}
+
 .resident-profile-form-view {
   display: grid;
   gap: 16px;
@@ -1921,9 +1993,16 @@ body.dark-mode .resident-profile-card {
   border-color: rgba(255, 255, 255, 0.12);
 }
 
+body.dark-mode .resident-institution-card {
+  background: rgba(120, 0, 0, 0.18);
+  border-color: rgba(240, 235, 216, 0.16);
+}
+
 body.dark-mode .resident-profile-summary-view h3,
 body.dark-mode .resident-profile-form-view h3,
-body.dark-mode .resident-profile-form-grid label {
+body.dark-mode .resident-profile-form-grid label,
+body.dark-mode .resident-join-institution-form label,
+body.dark-mode .resident-join-status {
   color: var(--eggshell);
 }
 
@@ -1947,7 +2026,8 @@ body.dark-mode .google-auth-placeholder {
 }
 
 body.dark-mode .resident-profile-form-grid input,
-body.dark-mode .resident-profile-form-grid select {
+body.dark-mode .resident-profile-form-grid select,
+body.dark-mode .resident-join-institution-form input {
   background: var(--ink-black);
   color: var(--eggshell);
   border-color: rgba(255, 255, 255, 0.2);
@@ -1977,7 +2057,8 @@ body.dyslexia-font .resident-profile-form-grid select {
     width: 100%;
   }
 
-  .resident-profile-form-grid {
+  .resident-profile-form-grid,
+  .resident-join-institution-form {
     grid-template-columns: 1fr;
   }
 }
@@ -2290,6 +2371,1386 @@ body.dark-mode .attempt-review-btn {
   }
 }
 
+/* =========================================================
+   FACULTY ONBOARDING CHECKLIST
+   ========================================================= */
+
+.faculty-onboarding-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(460px, 1fr);
+  align-items: center;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.78);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  border-left: 8px solid var(--medical-red);
+}
+
+.faculty-onboarding-panel h3,
+.faculty-onboarding-panel p {
+  margin: 0;
+}
+
+.faculty-onboarding-panel p {
+  line-height: 1.45;
+}
+
+.faculty-onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.faculty-onboarding-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.faculty-onboarding-step > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--medical-red);
+  color: var(--white);
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.faculty-onboarding-step strong {
+  display: block;
+  color: var(--deep-space);
+  margin-bottom: 4px;
+}
+
+.faculty-onboarding-step p {
+  font-size: 0.88rem;
+  color: var(--blue-slate);
+  font-weight: 700;
+}
+
+body.dark-mode .faculty-onboarding-panel,
+body.dark-mode .faculty-onboarding-step {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-onboarding-step strong,
+body.dark-mode .faculty-onboarding-step p {
+  color: var(--eggshell);
+}
+
+@media (max-width: 950px) {
+  .faculty-onboarding-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-onboarding-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   FACULTY ORGANIZATION SELECTOR
+   ========================================================= */
+
+.faculty-organization-control-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(460px, 0.85fr);
+  align-items: center;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(13, 19, 33, 0.06);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  border-left: 8px solid var(--deep-space);
+}
+
+.faculty-organization-control-panel h3,
+.faculty-organization-control-panel p {
+  margin: 0;
+}
+
+.faculty-organization-control-panel p {
+  line-height: 1.45;
+}
+
+.faculty-organization-actions {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) max-content;
+  align-items: end;
+  gap: 14px;
+}
+
+.faculty-organization-actions label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-organization-actions select {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-organization-actions button {
+  white-space: nowrap;
+  min-width: 176px;
+}
+
+body.dark-mode .faculty-organization-control-panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .faculty-organization-actions label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-organization-actions select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .faculty-organization-control-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-organization-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-organization-actions label,
+  .faculty-organization-actions button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   FACULTY SAFE REVIEW
+   ========================================================= */
+
+.faculty-attempt-detail-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.faculty-review-question {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  border-left: 8px solid var(--dusty-denim);
+}
+
+.faculty-review-question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.faculty-review-question-header > strong {
+  color: var(--deep-space);
+}
+
+.faculty-review-question > p {
+  margin: 10px 0 14px;
+  line-height: 1.55;
+}
+
+.faculty-answer-choice-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.faculty-answer-choice-list li {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  background: rgba(240, 235, 216, 0.58);
+  line-height: 1.45;
+}
+
+.faculty-answer-choice-content {
+  display: grid;
+  gap: 8px;
+}
+
+.faculty-answer-choice-text {
+  display: block;
+  min-width: 0;
+}
+
+.faculty-answer-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.faculty-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.faculty-answer-badge.selected {
+  background: rgba(62, 92, 118, 0.16);
+  color: var(--deep-space);
+  border: 1px solid rgba(62, 92, 118, 0.26);
+}
+
+.faculty-answer-badge.correct {
+  background: rgba(47, 133, 90, 0.16);
+  color: var(--success);
+  border: 1px solid rgba(47, 133, 90, 0.28);
+}
+
+.faculty-selected-answer {
+  border-color: rgba(62, 92, 118, 0.44) !important;
+  background: rgba(116, 140, 171, 0.16) !important;
+}
+
+.faculty-correct-answer {
+  border-color: rgba(47, 133, 90, 0.46) !important;
+  background: rgba(47, 133, 90, 0.11) !important;
+}
+
+.faculty-selected-answer.faculty-correct-answer {
+  border-color: rgba(47, 133, 90, 0.58) !important;
+  background: linear-gradient(
+    90deg,
+    rgba(47, 133, 90, 0.14),
+    rgba(116, 140, 171, 0.14)
+  ) !important;
+}
+
+.faculty-review-answer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.faculty-review-answer-row span {
+  display: inline-flex;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.1);
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+body.dark-mode .faculty-review-question {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .faculty-review-question-header > strong {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-answer-choice-list li {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-answer-badge.selected {
+  background: rgba(116, 140, 171, 0.28);
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-answer-badge.correct {
+  background: rgba(47, 133, 90, 0.26);
+  color: #9ae6b4;
+}
+
+body.dark-mode .faculty-selected-answer {
+  background: rgba(116, 140, 171, 0.2) !important;
+}
+
+body.dark-mode .faculty-correct-answer {
+  background: rgba(47, 133, 90, 0.18) !important;
+}
+
+body.dark-mode .faculty-review-answer-row span {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 760px) {
+  .faculty-answer-choice-content {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .faculty-answer-badge-row {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 560px) {
+  .faculty-review-question {
+    padding: 14px;
+  }
+
+  .faculty-review-question-header,
+  .faculty-review-answer-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .faculty-answer-badge {
+    white-space: normal;
+  }
+}
+
+/* =========================================================
+   FACULTY PROMOTE COHORT PANEL
+   ========================================================= */
+
+.faculty-promote-cohort-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(520px, 1fr);
+  align-items: center;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.1);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  border-left: 8px solid var(--dusty-denim);
+}
+
+.faculty-promote-cohort-panel h3,
+.faculty-promote-cohort-panel p {
+  margin: 0;
+}
+
+.faculty-promote-cohort-panel p {
+  line-height: 1.45;
+}
+
+.faculty-promote-cohort-actions {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.faculty-promote-cohort-actions label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-promote-cohort-actions select {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-promote-cohort-actions button {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.promote-cohort-status {
+  grid-column: 1 / -1;
+}
+
+.promote-cohort-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.promote-cohort-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .faculty-promote-cohort-panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-promote-cohort-actions label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-promote-cohort-actions select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .faculty-promote-cohort-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-promote-cohort-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-promote-cohort-actions label,
+  .faculty-promote-cohort-actions button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   FACULTY RESIDENT ACCESS CODE PANEL
+   ========================================================= */
+
+.faculty-access-code-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.75fr);
+  align-items: center;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(120, 0, 0, 0.08);
+  border: 1px solid rgba(120, 0, 0, 0.16);
+  border-left: 8px solid var(--medical-red);
+}
+
+.faculty-access-code-panel h3,
+.faculty-access-code-panel p {
+  margin: 0;
+}
+
+.faculty-access-code-panel p {
+  line-height: 1.45;
+}
+
+.faculty-access-code-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.faculty-access-code-actions label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-access-code-actions select {
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.resident-access-code-output {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.8);
+  border: 1px dashed rgba(120, 0, 0, 0.35);
+}
+
+.resident-access-code-output.hidden {
+  display: none;
+}
+
+.resident-access-code-output span {
+  display: block;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.resident-access-code-output strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.45rem;
+  letter-spacing: 0.06em;
+  color: var(--medical-red);
+}
+
+.resident-access-code-output p {
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--deep-space);
+}
+
+.access-code-status {
+  grid-column: 1 / -1;
+}
+
+.access-code-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.access-code-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .faculty-access-code-panel,
+body.dark-mode .resident-access-code-output {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+body.dark-mode .faculty-access-code-actions label,
+body.dark-mode .resident-access-code-output span,
+body.dark-mode .resident-access-code-output p {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-access-code-actions select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .resident-access-code-output strong {
+  color: var(--eggshell);
+}
+
+@media (max-width: 950px) {
+  .faculty-access-code-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-access-code-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-access-code-actions label,
+  .faculty-access-code-actions button,
+  .resident-access-code-output button {
+    width: 100%;
+  }
+
+  .resident-access-code-output {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* =========================================================
+   FACULTY ADD ADULT MEMBER PANEL
+   ========================================================= */
+
+.faculty-add-adult-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(520px, 1fr);
+  align-items: center;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(13, 19, 33, 0.05);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  border-left: 8px solid var(--deep-space);
+}
+
+.faculty-add-adult-panel h3,
+.faculty-add-adult-panel p {
+  margin: 0;
+}
+
+.faculty-add-adult-panel p {
+  line-height: 1.45;
+}
+
+.faculty-add-adult-actions {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(150px, 0.45fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.faculty-add-adult-actions label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-add-adult-actions input,
+.faculty-add-adult-actions select {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-add-adult-actions button {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.add-adult-status {
+  grid-column: 1 / -1;
+}
+
+.add-adult-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.add-adult-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .faculty-add-adult-panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-add-adult-actions label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-add-adult-actions input,
+body.dark-mode .faculty-add-adult-actions select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .faculty-add-adult-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-add-adult-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-add-adult-actions label,
+  .faculty-add-adult-actions button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   FACULTY COHORT DASHBOARD PREVIEW
+   ========================================================= */
+
+.faculty-cohort-control-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 18px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(62, 92, 118, 0.08);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  border-left: 8px solid var(--blue-slate);
+}
+
+.faculty-cohort-control-panel h3,
+.faculty-cohort-control-panel p {
+  margin: 0;
+}
+
+.faculty-cohort-control-panel p {
+  line-height: 1.45;
+}
+
+.faculty-cohort-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1fr) minmax(160px, auto) minmax(170px, auto);
+  align-items: end;
+  gap: 12px;
+  width: 100%;
+}
+
+.faculty-cohort-actions label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-cohort-actions select,
+.faculty-cohort-actions input {
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-cohort-actions button {
+  min-width: 150px;
+  min-height: 48px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.manage-cohorts-panel {
+  display: grid;
+  gap: 14px;
+  grid-column: 1 / -1;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+}
+
+.manage-cohorts-panel.hidden {
+  display: none;
+}
+
+.manage-cohorts-header strong {
+  display: block;
+  color: var(--deep-space);
+  margin-bottom: 4px;
+}
+
+.manage-cohorts-header p {
+  margin: 0;
+  color: var(--blue-slate);
+  font-weight: 700;
+}
+
+.manage-cohorts-list {
+  display: grid;
+  gap: 16px;
+}
+
+.manage-cohort-group {
+  display: grid;
+  gap: 10px;
+}
+
+.manage-cohort-group h4 {
+  margin: 0;
+  color: var(--deep-space);
+}
+
+.manage-cohort-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(240px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.manage-cohort-row.is-archived {
+  background: rgba(13, 19, 33, 0.05);
+  border-style: dashed;
+  opacity: 0.88;
+}
+
+.manage-cohort-row strong {
+  display: block;
+  color: var(--deep-space);
+}
+
+.manage-cohort-row span {
+  display: block;
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.manage-cohort-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.manage-cohort-row input {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.manage-cohort-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.manage-cohort-actions button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.manage-cohort-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.manage-cohorts-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.manage-cohorts-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .manage-cohorts-panel,
+body.dark-mode .manage-cohort-row {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .manage-cohort-row.is-archived {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .manage-cohorts-header strong,
+body.dark-mode .manage-cohorts-header p,
+body.dark-mode .manage-cohort-group h4,
+body.dark-mode .manage-cohort-row strong,
+body.dark-mode .manage-cohort-row span,
+body.dark-mode .manage-cohort-row label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .manage-cohort-row input {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .manage-cohort-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .manage-cohort-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  .manage-cohort-actions button {
+    width: 100%;
+  }
+}
+
+.cohort-create-status {
+  grid-column: 1 / -1;
+}
+
+.cohort-create-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.cohort-create-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .faculty-cohort-actions input {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.faculty-summary-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.faculty-cohort-highlights-grid,
+.faculty-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 18px 0;
+}
+
+.faculty-cohort-highlights-grid .full-width,
+.faculty-preview-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.faculty-highlight-list,
+.faculty-cohort-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.faculty-highlight-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.faculty-highlight-item strong {
+  display: block;
+}
+
+.faculty-highlight-item span {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.85rem;
+  opacity: 0.78;
+}
+
+.faculty-chart-row {
+  padding: 10px 0;
+}
+
+body.dark-mode .faculty-cohort-control-panel,
+body.dark-mode .faculty-highlight-item {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .faculty-cohort-actions label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-cohort-actions select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .faculty-summary-metric-grid,
+  .faculty-cohort-highlights-grid,
+  .faculty-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .faculty-cohort-highlights-grid .full-width,
+  .faculty-preview-grid .full-width {
+    grid-column: auto;
+  }
+
+  .faculty-cohort-control-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-cohort-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-cohort-actions label,
+  .faculty-cohort-actions button {
+    width: 100%;
+  }
+
+  .faculty-cohort-actions button {
+    min-width: 0;
+    white-space: normal;
+  }
+
+    .faculty-roster-move-controls {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .faculty-roster-move-controls button {
+    width: 100%;
+  }
+
+  .faculty-cohort-actions label,
+  .faculty-cohort-actions button {
+    width: 100%;
+  }
+}
+
+.roster-action-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.roster-action-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+.faculty-roster-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr) minmax(300px, 1.1fr);
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.faculty-roster-move-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(78px, auto);
+  align-items: end;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.faculty-roster-move-controls label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-roster-move-controls select {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 9px 10px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-roster-move-controls button {
+  min-height: 44px;
+  min-width: 78px;
+  white-space: nowrap;
+}
+
+body.dark-mode .faculty-roster-move-controls label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-roster-move-controls select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+
+/* =========================================================
+   FACULTY PAGE HEADER
+   ========================================================= */
+
+.faculty-page header {
+  padding: 28px 36px;
+}
+
+.faculty-page .header-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.faculty-page .header-content > div:first-child {
+  max-width: 780px;
+}
+
+.faculty-page .header-content h1 {
+  font-size: clamp(2rem, 3vw, 2.55rem);
+  line-height: 1.1;
+}
+
+.faculty-page .header-content > div:first-child p {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.faculty-page .header-toggles {
+  display: grid;
+  grid-template-columns: auto minmax(360px, 520px);
+  align-items: center;
+  justify-content: end;
+  gap: 14px;
+}
+
+.faculty-page .header-toggles > .toggle-btn {
+  justify-self: end;
+}
+
+.faculty-page .header-toggles > .toggle-btn + .toggle-btn {
+  justify-self: start;
+}
+
+.faculty-page .header-google-auth-box {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100%;
+  max-width: 520px;
+  align-self: center;
+  justify-content: space-between;
+}
+
+.faculty-page .header-account-status-stack {
+  gap: 8px;
+}
+
+.faculty-page .header-google-auth-actions {
+  align-self: center;
+}
+
+.faculty-page .header-google-auth-actions button {
+  white-space: nowrap;
+}
+
+@media (max-width: 1150px) {
+  .faculty-page .header-content {
+    grid-template-columns: 1fr;
+  }
+
+  .faculty-page .header-toggles {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(160px, auto)) minmax(320px, 1fr);
+    justify-content: stretch;
+  }
+
+  .faculty-page .header-google-auth-box {
+    grid-column: 3;
+    grid-row: 1;
+    max-width: none;
+  }
+
+  .faculty-roster-item {
+    grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.5fr);
+  }
+
+  .faculty-roster-move-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+
+@media (max-width: 900px) {
+  .faculty-page .header-toggles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .faculty-page .header-google-auth-box {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .faculty-page header {
+    padding: 22px 18px;
+  }
+
+  .faculty-page .header-toggles {
+    grid-template-columns: 1fr;
+  }
+
+  .faculty-page .toggle-btn,
+  .faculty-page .header-google-auth-box,
+  .faculty-page .header-google-auth-actions button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   RESIDENT PAGE HEADER
+   ========================================================= */
+
+.resident-page header {
+  padding: 28px 36px;
+}
+
+.resident-page .header-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.resident-page .header-content > div:first-child {
+  max-width: 780px;
+}
+
+.resident-page .header-content h1 {
+  font-size: clamp(2rem, 3vw, 2.55rem);
+  line-height: 1.1;
+}
+
+.resident-page .header-content > div:first-child p {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.resident-page .header-toggles {
+  display: grid;
+  grid-template-columns: auto auto minmax(360px, 540px);
+  align-items: center;
+  justify-content: end;
+  gap: 14px;
+}
+
+.resident-page .header-toggles > .toggle-btn {
+  justify-self: end;
+}
+
+.resident-page .header-google-auth-box {
+  width: 100%;
+  max-width: 540px;
+  align-self: center;
+  justify-content: space-between;
+}
+
+.resident-page .header-account-status-stack {
+  gap: 8px;
+}
+
+.resident-page .header-google-auth-actions {
+  align-self: center;
+}
+
+.resident-page .header-google-auth-actions button {
+  white-space: nowrap;
+}
+
+@media (max-width: 1150px) {
+  .resident-page .header-content {
+    grid-template-columns: 1fr;
+  }
+
+  .resident-page .header-toggles {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(160px, auto)) minmax(320px, 1fr);
+    justify-content: stretch;
+  }
+
+  .resident-page .header-google-auth-box {
+    max-width: none;
+  }
+
+   .faculty-roster-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-roster-move-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .faculty-roster-move-controls button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .resident-page .header-toggles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .resident-page .header-google-auth-box {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .resident-page header {
+    padding: 22px 18px;
+  }
+
+  .resident-page .header-toggles {
+    grid-template-columns: 1fr;
+  }
+
+  .resident-page .toggle-btn,
+  .resident-page .header-google-auth-box,
+  .resident-page .header-google-auth-actions button {
+    width: 100%;
+  }
+}
 
 /* =========================================================
    APP FOOTER
