@@ -93,6 +93,19 @@ exports.handler = async function (event) {
       }));
     }
 
+    if (requesterMembership.role === "faculty") {
+      const assignedCohortIds = Array.isArray(requesterMembership.assignedCohortIds)
+        ? requesterMembership.assignedCohortIds
+        : [];
+
+      if (!assignedCohortIds.includes(targetCohortId)) {
+        return withCors(jsonResponse(403, {
+          success: false,
+          error: "You can only create resident codes for assigned cohorts."
+        }));
+      }
+    }
+
     const now = new Date().toISOString();
     const code = generateReadableCode();
     const codeHash = hashCode(code);

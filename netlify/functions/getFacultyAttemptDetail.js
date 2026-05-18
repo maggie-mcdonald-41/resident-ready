@@ -1,6 +1,6 @@
 const { getStore, connectLambda } = require("@netlify/blobs");
 const { requireResident, sanitizeKeyFragment } = require("./_shared/auth");
-const { requireFacultyOrAdmin } = require("./_shared/orgAccess");
+const { requireFacultyCohortAccess } = require("./_shared/orgAccess");
 const {
   jsonResponse,
   methodNotAllowed,
@@ -43,11 +43,18 @@ exports.handler = async function (event) {
     let detailKey = `faculty/${facultyScope}/residents/${residentId}/attempts/${attemptId}.json`;
 
     if (organizationId) {
-      await requireFacultyOrAdmin(requester, organizationId);
       detailKey = `organizations/${organizationId}/residents/${residentId}/attempts/${attemptId}.json`;
     }
 
     const detail = await store.get(detailKey, { type: "json" });
+
+    if (organizationId && detail) {
+      await requireFacultyCohortAccess(
+        requester,
+        organizationId,
+        detail.cohortId || detail.assignmentContext?.cohortId || ""
+      );
+    }
 
     if (!detail) {
       return withCors(jsonResponse(404, {

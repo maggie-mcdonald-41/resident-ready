@@ -152,12 +152,12 @@
           </div>
         </section>
 
-        <section class="faculty-add-adult-panel">
+        <section id="facultyAddAdultPanel" class="faculty-add-adult-panel">
           <div>
             <p class="eyebrow-label">Faculty/Admin Access</p>
-            <h3>Add Faculty or Admin</h3>
+            <h3>Add Faculty/Admin Member</h3>
             <p>
-              Add another adult to this organization by email. They will see this organization after signing in with Google using that email address.
+              Add a faculty or admin member by email. They will see this organization after signing in with Google using that email address.
             </p>
           </div>
 
@@ -181,16 +181,29 @@
             </label>
 
             <button id="addAdultMemberBtn" class="secondary" type="button">
-              Add Member
+              Add Faculty/Admin
             </button>
           </div>
 
           <p id="addAdultMemberStatus" class="dashboard-card-note add-adult-status">
             Primary Admins can add Admins or Faculty. Admins can add Faculty.
           </p>
+
+          <div id="facultyAdminMemberManagementBox" class="faculty-admin-member-management-box">
+            <div class="faculty-admin-member-management-header">
+              <strong>Current Faculty/Admin Members</strong>
+              <p>
+                Primary Admins can update member roles. Admins can view this list and add Faculty.
+              </p>
+            </div>
+
+            <div id="facultyAdminMemberList" class="faculty-admin-member-list">
+              Select an organization to load Faculty/Admin members.
+            </div>
+          </div>
         </section>
 
-        <section class="faculty-cohort-control-panel">
+        <section id="facultyCohortControlPanel" class="faculty-cohort-control-panel">
           <div>
             <p class="eyebrow-label">Cohort Controls</p>
             <h3>Select a Cohort</h3>
@@ -251,7 +264,7 @@
           </div>
         </section>
 
-        <section class="faculty-promote-cohort-panel">
+        <section id="facultyPromoteCohortPanel" class="faculty-promote-cohort-panel">
           <div>
             <p class="eyebrow-label">Cohort Promotion</p>
             <h3>Promote Residents</h3>

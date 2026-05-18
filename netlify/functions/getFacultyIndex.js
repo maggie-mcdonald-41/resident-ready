@@ -1,6 +1,6 @@
 const { getStore, connectLambda } = require("@netlify/blobs");
 const { requireResident, sanitizeKeyFragment } = require("./_shared/auth");
-const { requireFacultyOrAdmin } = require("./_shared/orgAccess");
+const { requireFacultyCohortAccess } = require("./_shared/orgAccess");
 const {
   jsonResponse,
   methodNotAllowed,
@@ -35,7 +35,7 @@ exports.handler = async function (event) {
     let recentAttemptsKey = `faculty/${facultyScope}/recent-attempts.json`;
 
     if (organizationId) {
-      await requireFacultyOrAdmin(requester, organizationId);
+      await requireFacultyCohortAccess(requester, organizationId, cohortId);
 
       if (cohortId && cohortId !== "all") {
         rosterKey = `organizations/${organizationId}/cohorts/${cohortId}/roster.json`;

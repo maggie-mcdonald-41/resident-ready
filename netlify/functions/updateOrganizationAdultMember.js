@@ -3,7 +3,6 @@ const { requireResident, sanitizeKeyFragment } = require("./_shared/auth");
 const {
   getEmailKey,
   getUserMembershipRecord,
-  mergeUserMembership,
   requireOrgAdmin
 } = require("./_shared/orgAccess");
 const {
@@ -58,39 +57,36 @@ function isValidEmail(email = "") {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function upsertAdultMemberIndex(index = {}, membership = {}) {
+function upsertAdultMemberIndex(index = {}, updatedMembership = {}) {
   const members = Array.isArray(index.members) ? index.members : [];
 
-  const withoutCurrent = members.filter((member) =>
-    !(
-      member.email === membership.email &&
-      member.role === membership.role
-    )
+  const withoutCurrentEmail = members.filter((member) =>
+    member.email !== updatedMembership.email
   );
 
   return {
     ...(index || {}),
     version: 1,
-    organizationId: membership.organizationId,
-    organizationName: membership.organizationName,
+    organizationId: updatedMembership.organizationId,
+    organizationName: updatedMembership.organizationName,
     updatedAt: new Date().toISOString(),
     members: [
       {
-        organizationId: membership.organizationId,
-        organizationName: membership.organizationName,
-        email: membership.email,
-        displayName: membership.displayName || "",
-        role: membership.role,
-        roleLabel: membership.roleLabel,
-        status: membership.status,
-        assignedCohortIds: Array.isArray(membership.assignedCohortIds)
-          ? membership.assignedCohortIds
+        organizationId: updatedMembership.organizationId,
+        organizationName: updatedMembership.organizationName,
+        email: updatedMembership.email,
+        displayName: updatedMembership.displayName || "",
+        role: updatedMembership.role,
+        roleLabel: updatedMembership.roleLabel,
+        status: updatedMembership.status,
+        assignedCohortIds: Array.isArray(updatedMembership.assignedCohortIds)
+          ? updatedMembership.assignedCohortIds
           : [],
-        addedByEmail: membership.addedByEmail,
-        joinedAt: membership.joinedAt,
-        updatedAt: membership.updatedAt
+        addedByEmail: updatedMembership.addedByEmail,
+        joinedAt: updatedMembership.joinedAt,
+        updatedAt: updatedMembership.updatedAt
       },
-      ...withoutCurrent
+      ...withoutCurrentEmail
     ].sort((a, b) => {
       const roleOrder = { admin: 1, faculty: 2 };
       const roleCompare = (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
@@ -115,7 +111,7 @@ exports.handler = async function (event) {
 
     const organizationId = sanitizeKeyFragment(body.organizationId || "");
     const targetEmail = normalizeEmail(body.email || body.targetEmail || "");
-    const role = normalizeRole(body.role || "");
+    const targetRole = normalizeRole(body.role || body.targetRole || "");
 
     if (!organizationId) {
       return withCors(jsonResponse(400, {
@@ -131,7 +127,7 @@ exports.handler = async function (event) {
       }));
     }
 
-    if (!["admin", "faculty"].includes(role)) {
+    if (!["admin", "faculty"].includes(targetRole)) {
       return withCors(jsonResponse(400, {
         success: false,
         error: "Role must be admin or faculty."
@@ -142,10 +138,24 @@ exports.handler = async function (event) {
 
     const requesterMembership = await requireOrgAdmin(requester, organizationId);
 
-    if (requesterMembership.role === "admin" && role === "admin") {
+    if (requesterMembership.role !== "primary_admin" && targetRole === "admin") {
       return withCors(jsonResponse(403, {
         success: false,
-        error: "Only the Primary Admin can add another admin."
+        error: "Only the Primary Admin can assign the Admin role."
+      }));
+    }
+
+    if (requesterMembership.role !== "primary_admin") {
+      return withCors(jsonResponse(403, {
+        success: false,
+        error: "Only the Primary Admin can update Faculty/Admin member roles right now."
+      }));
+    }
+
+    if (requester.email && requester.email.toLowerCase() === targetEmail) {
+      return withCors(jsonResponse(400, {
+        success: false,
+        error: "You cannot change your own role from this panel."
       }));
     }
 
@@ -172,56 +182,79 @@ exports.handler = async function (event) {
         email: targetEmail
       });
 
-    const existingMemberships = Array.isArray(existingUserMembershipRecord?.memberships)
+    const memberships = Array.isArray(existingUserMembershipRecord?.memberships)
       ? existingUserMembershipRecord.memberships
       : [];
 
-    const existingSameRole = existingMemberships.find((membership) =>
+    const existingAdultMembership = memberships.find((membership) =>
       membership.organizationId === organizationId &&
-      membership.role === role &&
+      ["admin", "faculty"].includes(membership.role) &&
       membership.status === "active"
     );
 
-    if (existingSameRole) {
-      return withCors(jsonResponse(409, {
+    if (!existingAdultMembership) {
+      return withCors(jsonResponse(404, {
         success: false,
-        error: `${targetEmail} already has the ${getRoleLabel(role)} role for this organization.`
+        error: "No active faculty/admin membership found for that email."
       }));
     }
 
     const now = new Date().toISOString();
 
-    const membership = {
-      version: 1,
+    const updatedMembership = {
+      ...existingAdultMembership,
       organizationId,
       organizationName: organization.organizationName,
-      userId: existingUserMembershipRecord?.userId || null,
       email: targetEmail,
-      displayName: "",
-      role,
-      roleLabel: getRoleLabel(role),
+      role: targetRole,
+      roleLabel: getRoleLabel(targetRole),
       status: "active",
-      permissions: getPermissionsForRole(role),
-      activeCohortId: null,
-      assignedCohortIds: role === "admin" ? ["all"] : [],
-      addedByUserId: requester.residentId,
-      addedByEmail: requester.email,
-      joinedAt: now,
+      permissions: getPermissionsForRole(targetRole),
+      assignedCohortIds:
+        targetRole === "admin"
+          ? ["all"]
+          : (Array.isArray(existingAdultMembership.assignedCohortIds)
+              ? existingAdultMembership.assignedCohortIds.filter((cohortId) => cohortId && cohortId !== "all")
+              : []),
+      updatedByUserId: requester.residentId,
+      updatedByEmail: requester.email,
       updatedAt: now
     };
 
-    const updatedUserMembershipRecord = mergeUserMembership(
-      {
-        ...existingUserMembershipRecord,
-        email: existingUserMembershipRecord?.email || targetEmail
-      },
-      membership
-    );
+    const updatedUserMembershipRecord = {
+      ...existingUserMembershipRecord,
+      email: existingUserMembershipRecord?.email || targetEmail,
+      updatedAt: now,
+      memberships: [
+        updatedMembership,
+        ...memberships.filter((membership) =>
+          !(
+            membership.organizationId === organizationId &&
+            ["admin", "faculty"].includes(membership.role)
+          )
+        )
+      ]
+    };
 
-    const adultMemberKey =
-      `organizations/${organizationId}/adult-members/${role}-${targetEmailKey}.json`;
+    const oldAdultMemberKey =
+      `organizations/${organizationId}/adult-members/${existingAdultMembership.role}-${targetEmailKey}.json`;
+    const newAdultMemberKey =
+      `organizations/${organizationId}/adult-members/${targetRole}-${targetEmailKey}.json`;
     const adultMemberIndexKey =
       `organizations/${organizationId}/adult-members/index.json`;
+
+    const existingOldAdultMember = await organizationMemberStore.get(oldAdultMemberKey, {
+      type: "json"
+    });
+
+    if (existingOldAdultMember && existingAdultMembership.role !== targetRole) {
+      await organizationMemberStore.setJSON(oldAdultMemberKey, {
+        ...existingOldAdultMember,
+        status: "inactive",
+        replacedByRole: targetRole,
+        updatedAt: now
+      });
+    }
 
     const existingAdultIndex = await organizationMemberStore.get(adultMemberIndexKey, {
       type: "json"
@@ -232,10 +265,10 @@ exports.handler = async function (event) {
       organizationId,
       organizationName: organization.organizationName,
       members: []
-    }, membership);
+    }, updatedMembership);
 
     await userMembershipStore.setJSON(userMembershipKey, updatedUserMembershipRecord);
-    await organizationMemberStore.setJSON(adultMemberKey, membership);
+    await organizationMemberStore.setJSON(newAdultMemberKey, updatedMembership);
     await organizationMemberStore.setJSON(adultMemberIndexKey, updatedAdultIndex);
     await organizationStore.setJSON(organizationKey, {
       ...organization,
@@ -248,15 +281,15 @@ exports.handler = async function (event) {
         organizationId,
         organizationName: organization.organizationName
       },
-      membership,
-      message: `${targetEmail} was added as ${getRoleLabel(role)}. They can now sign in with Google using that email.`
+      membership: updatedMembership,
+      message: `${targetEmail} is now ${getRoleLabel(targetRole)}.`
     }));
   } catch (error) {
-    console.error("[addOrganizationAdultMember] Error:", error);
+    console.error("[updateOrganizationAdultMember] Error:", error);
 
     return withCors(jsonResponse(401, {
       success: false,
-      error: error.message || "Could not add faculty/admin member."
+      error: error.message || "Could not update faculty/admin member."
     }));
   }
 };

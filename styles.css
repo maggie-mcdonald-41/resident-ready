@@ -3050,6 +3050,200 @@ body.dark-mode .resident-access-code-output strong {
   white-space: nowrap;
 }
 
+.faculty-admin-member-management-box {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+}
+
+.faculty-admin-member-management-header strong {
+  display: block;
+  color: var(--deep-space);
+  margin-bottom: 4px;
+}
+
+.faculty-admin-member-management-header p {
+  margin: 0;
+  color: var(--blue-slate);
+  font-weight: 700;
+}
+
+.faculty-admin-member-list {
+  display: grid;
+  gap: 10px;
+}
+
+.faculty-admin-member-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(140px, 0.4fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.faculty-admin-member-row strong {
+  display: block;
+  color: var(--deep-space);
+}
+
+.faculty-admin-member-row span {
+  display: block;
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.faculty-admin-member-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-admin-member-row select {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-admin-member-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.faculty-admin-member-row button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.danger-action {
+  background: var(--medical-red);
+}
+
+.danger-action:hover {
+  filter: brightness(1.08);
+}
+
+.faculty-admin-member-row button:disabled,
+.faculty-admin-member-row select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.faculty-cohort-assignment-box {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.6);
+  border: 1px dashed rgba(62, 92, 118, 0.28);
+}
+
+.faculty-cohort-assignment-box strong {
+  color: var(--deep-space);
+}
+
+.faculty-cohort-assignment-box p {
+  margin: 0;
+  color: var(--blue-slate);
+  font-weight: 700;
+}
+
+.faculty-cohort-assignment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.faculty-cohort-assignment-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.1);
+  color: var(--blue-slate);
+  font-weight: 800;
+}
+
+.faculty-cohort-assignment-options input {
+  accent-color: var(--medical-red);
+}
+
+.save-faculty-cohort-access-btn {
+  justify-self: start;
+}
+
+body.dark-mode .faculty-cohort-assignment-box {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark-mode .faculty-cohort-assignment-box strong,
+body.dark-mode .faculty-cohort-assignment-box p,
+body.dark-mode .faculty-cohort-assignment-options label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-cohort-assignment-options label {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .faculty-admin-member-management-box,
+body.dark-mode .faculty-admin-member-row {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-admin-member-management-header strong,
+body.dark-mode .faculty-admin-member-management-header p,
+body.dark-mode .faculty-admin-member-row strong,
+body.dark-mode .faculty-admin-member-row span,
+body.dark-mode .faculty-admin-member-row label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-admin-member-row select {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .faculty-admin-member-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .faculty-admin-member-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .faculty-admin-member-row button {
+    width: 100%;
+  }
+}
+
 .add-adult-status {
   grid-column: 1 / -1;
 }
@@ -3470,6 +3664,10 @@ body.dark-mode .faculty-cohort-actions select {
   gap: 16px;
   width: 100%;
   overflow: hidden;
+}
+
+.faculty-roster-item.faculty-roster-readonly {
+  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr);
 }
 
 .faculty-roster-move-controls {

@@ -5,6 +5,7 @@ window.FacultyApp = {
   selectedOrganizationId: "",
   latestOrganizationMemberships: [],
   latestOrganizationCohorts: [],
+  latestOrganizationAdultMembers: [],
   latestAllOrganizationCohorts: [],
   selectedCohortId: "all",
   latestFacultyIndexData: null,
@@ -355,6 +356,12 @@ window.FacultyApp = {
       return;
     }
 
+    if (!this.isOrgAdmin()) {
+      status.textContent = "Admin permission is required to create cohorts.";
+      status.className = "dashboard-card-note cohort-create-status error";
+      return;
+    }
+
     if (!this.selectedOrganizationId) {
       status.textContent = "Select an organization before creating a cohort.";
       status.className = "dashboard-card-note cohort-create-status error";
@@ -609,6 +616,12 @@ window.FacultyApp = {
       return;
     }
 
+    if (!this.isOrgAdmin()) {
+      status.textContent = "Admin permission is required to manage cohorts.";
+      status.className = "dashboard-card-note manage-cohorts-status error";
+      return;
+    }
+
     if (!this.selectedOrganizationId) {
       status.textContent = "Select an organization before managing cohorts.";
       status.className = "dashboard-card-note manage-cohorts-status error";
@@ -803,6 +816,12 @@ window.FacultyApp = {
 
     if (!this.hasValidBackendSession()) {
       status.textContent = "Sign in before promoting residents.";
+      status.className = "dashboard-card-note promote-cohort-status error";
+      return;
+    }
+
+    if (!this.isOrgAdmin()) {
+      status.textContent = "Admin permission is required to promote residents.";
       status.className = "dashboard-card-note promote-cohort-status error";
       return;
     }
@@ -1158,7 +1177,9 @@ window.FacultyApp = {
 
     try {
       const data = await this.loadMyOrganizations();
-      const memberships = Array.isArray(data.memberships) ? data.memberships : [];
+      const memberships = Array.isArray(data.memberships)
+        ? data.memberships.filter((membership) => membership.status === "active")
+        : [];
 
       this.latestOrganizationMemberships = memberships;
 
@@ -1172,7 +1193,7 @@ window.FacultyApp = {
       }
 
       this.renderOrganizationSelector(memberships);
-      this.renderAdultMemberRoleOptions();
+      this.renderRoleBasedControls();
 
       if (status && memberships.length) {
         const selected = this.getSelectedOrganizationMembership();
@@ -1258,6 +1279,408 @@ window.FacultyApp = {
     return membership?.role || "";
   },
 
+  isPrimaryAdmin() {
+    return this.getCurrentFacultyRole() === "primary_admin";
+  },
+
+  isOrgAdmin() {
+    return ["primary_admin", "admin"].includes(this.getCurrentFacultyRole());
+  },
+
+  isFacultyOnly() {
+    return this.getCurrentFacultyRole() === "faculty";
+  },
+
+  setElementVisibility(elementId, shouldShow) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    element.classList.toggle("hidden", !shouldShow);
+  },
+
+  renderRoleBasedControls() {
+    const isAdmin = this.isOrgAdmin();
+    const isPrimaryAdmin = this.isPrimaryAdmin();
+
+    this.setElementVisibility("facultyAddAdultPanel", isAdmin);
+    this.setElementVisibility("facultyAdminMemberManagementBox", isAdmin);
+    this.setElementVisibility("facultyCohortControlPanel", isAdmin);
+    this.setElementVisibility("facultyPromoteCohortPanel", isAdmin);
+
+    const addAdultStatus = document.getElementById("addAdultMemberStatus");
+    if (addAdultStatus) {
+      addAdultStatus.textContent = isPrimaryAdmin
+        ? "Primary Admins can add Admins or Faculty."
+        : isAdmin
+          ? "Admins can add Faculty. Only the Primary Admin can add another Admin."
+          : "Faculty can view resident progress and create resident access codes.";
+      addAdultStatus.className = "dashboard-card-note add-adult-status";
+    }
+
+    const accessCodeStatus = document.getElementById("residentAccessCodeStatus");
+    if (accessCodeStatus && this.isFacultyOnly()) {
+      accessCodeStatus.textContent =
+        "Faculty can create resident access codes for active cohorts.";
+      accessCodeStatus.className = "dashboard-card-note access-code-status";
+    }
+
+    this.renderAdultMemberRoleOptions();
+  },
+
+  async loadFacultyAdminMembers() {
+    if (!this.hasValidBackendSession() || !this.selectedOrganizationId || !this.isOrgAdmin()) {
+      this.latestOrganizationAdultMembers = [];
+      return [];
+    }
+
+    const query = new URLSearchParams({
+      organizationId: this.selectedOrganizationId
+    });
+
+    const data = await this.apiFetch(`getOrganizationAdultMembers?${query.toString()}`, {
+      method: "GET"
+    });
+
+    this.latestOrganizationAdultMembers = Array.isArray(data.members)
+      ? data.members
+      : [];
+
+    return this.latestOrganizationAdultMembers;
+  },
+
+  getAssignableCohorts() {
+    return Array.isArray(this.latestOrganizationCohorts)
+      ? this.latestOrganizationCohorts.filter((cohort) =>
+          cohort.status !== "archived"
+        )
+      : [];
+  },
+
+  renderFacultyCohortAssignmentControls(member = {}) {
+    if (member.role !== "faculty") return "";
+
+    const cohorts = this.getAssignableCohorts();
+    const assignedCohortIds = Array.isArray(member.assignedCohortIds)
+      ? member.assignedCohortIds
+      : [];
+
+    if (!cohorts.length) {
+      return `
+        <div class="faculty-cohort-assignment-box">
+          <strong>Cohort Access</strong>
+          <p>Create a cohort before assigning Faculty access.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="faculty-cohort-assignment-box">
+        <strong>Cohort Access</strong>
+        <div class="faculty-cohort-assignment-options">
+          ${cohorts.map((cohort) => `
+            <label>
+              <input
+                type="checkbox"
+                class="faculty-cohort-assignment-checkbox"
+                data-member-email="${this.escapeAttribute(member.email)}"
+                value="${this.escapeAttribute(cohort.cohortId)}"
+                ${assignedCohortIds.includes(cohort.cohortId) ? "checked" : ""}
+              />
+              <span>${this.escapeHtml(cohort.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+
+        <button
+          class="secondary save-faculty-cohort-access-btn"
+          type="button"
+          data-member-email="${this.escapeAttribute(member.email)}"
+        >
+          Save Cohort Access
+        </button>
+      </div>
+    `;
+  },
+
+  getSelectedFacultyCohortAssignments(email = "") {
+    return Array.from(
+      document.querySelectorAll(
+        `.faculty-cohort-assignment-checkbox[data-member-email="${CSS.escape(email)}"]:checked`
+      )
+    ).map((checkbox) => checkbox.value);
+  },
+
+  async saveFacultyCohortAssignmentsFromUI(email = "") {
+    const status = document.getElementById("addAdultMemberStatus");
+
+    if (!status) return;
+
+    if (!this.isOrgAdmin()) {
+      status.textContent = "Admin permission is required to assign Faculty cohorts.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
+    if (!email) {
+      status.textContent = "Could not identify the Faculty member.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
+    const assignedCohortIds = this.getSelectedFacultyCohortAssignments(email);
+
+    status.textContent = "Saving Faculty cohort access...";
+    status.className = "dashboard-card-note add-adult-status";
+
+    try {
+      const data = await this.apiFetch("assignFacultyCohorts", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          email,
+          assignedCohortIds
+        })
+      });
+
+      await this.refreshFacultyAdminMembersPanel();
+
+      status.textContent = data.message || "Faculty cohort access saved.";
+      status.className = "dashboard-card-note add-adult-status success";
+
+      console.log("[Resident Ready Faculty] Faculty cohort access saved.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not save Faculty cohort access.", error);
+      status.textContent = error.message || "Could not save Faculty cohort access.";
+      status.className = "dashboard-card-note add-adult-status error";
+    }
+  },
+
+  renderFacultyAdminMemberList() {
+    const list = document.getElementById("facultyAdminMemberList");
+    if (!list) return;
+
+    const members = Array.isArray(this.latestOrganizationAdultMembers)
+      ? this.latestOrganizationAdultMembers
+      : [];
+
+    if (!this.selectedOrganizationId) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No organization selected.</strong>
+          <p>Select an organization to view Faculty/Admin members.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (!this.isOrgAdmin()) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Admin access required.</strong>
+          <p>Faculty can view resident progress, but Faculty/Admin member management is admin-only.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (!members.length) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No added Faculty/Admin members yet.</strong>
+          <p>Add a Faculty/Admin member above. They will appear here after being added.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const canUpdateRoles = this.isPrimaryAdmin();
+
+    list.innerHTML = members
+      .map((member) => {
+        const role = member.role || "faculty";
+        const roleLabel = role === "admin" ? "Admin" : "Faculty";
+        const assignmentControlsHtml = this.renderFacultyCohortAssignmentControls(member);
+
+        return `
+          <div class="faculty-admin-member-row">
+            <div>
+              <strong>${this.escapeHtml(member.email || "No email")}</strong>
+              <span>${roleLabel} · ${this.escapeHtml(member.status || "active")}</span>
+            </div>
+
+            <label>
+              Role
+              <select
+                class="faculty-admin-member-role-select"
+                data-member-email="${this.escapeAttribute(member.email)}"
+                ${canUpdateRoles ? "" : "disabled"}
+              >
+                <option value="faculty" ${role === "faculty" ? "selected" : ""}>Faculty</option>
+                <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+              </select>
+            </label>
+
+            <div class="faculty-admin-member-actions">
+              <button
+                class="secondary update-faculty-admin-member-role-btn"
+                type="button"
+                data-member-email="${this.escapeAttribute(member.email)}"
+                ${canUpdateRoles ? "" : "disabled"}
+              >
+                Update Role
+              </button>
+
+              <button
+                class="secondary remove-faculty-admin-member-btn danger-action"
+                type="button"
+                data-member-email="${this.escapeAttribute(member.email)}"
+                ${canUpdateRoles ? "" : "disabled"}
+              >
+                Remove
+              </button>
+            </div>
+
+            ${assignmentControlsHtml}
+          </div>
+        `;
+      })
+      .join("");
+  },
+
+  async refreshFacultyAdminMembersPanel() {
+    const list = document.getElementById("facultyAdminMemberList");
+    if (!list) return;
+
+    if (!this.hasValidBackendSession() || !this.selectedOrganizationId || !this.isOrgAdmin()) {
+      this.latestOrganizationAdultMembers = [];
+      const box = document.getElementById("facultyAdminMemberManagementBox");
+      if (box) box.classList.add("hidden");
+      return;
+    }
+
+    try {
+      const box = document.getElementById("facultyAdminMemberManagementBox");
+      if (box) box.classList.remove("hidden");
+
+      await this.loadFacultyAdminMembers();
+      this.renderFacultyAdminMemberList();
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not load Faculty/Admin members.", error);
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Could not load Faculty/Admin members.</strong>
+          <p>${this.escapeHtml(error.message || "Check the console for details.")}</p>
+        </div>
+      `;
+    }
+  },
+
+    async removeFacultyAdminMemberFromUI(email = "") {
+    const status = document.getElementById("addAdultMemberStatus");
+
+    if (!status) return;
+
+    if (!this.isPrimaryAdmin()) {
+      status.textContent = "Only the Primary Admin can remove Faculty/Admin members.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
+    if (!email) {
+      status.textContent = "Could not identify the member to remove.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove ${email} from Faculty/Admin access for this organization? They will no longer see this organization after signing in.`
+    );
+
+    if (!confirmed) return;
+
+    status.textContent = "Removing Faculty/Admin member...";
+    status.className = "dashboard-card-note add-adult-status";
+
+    try {
+      const data = await this.apiFetch("removeOrganizationAdultMember", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          email
+        })
+      });
+
+      await this.refreshOrganizationAccess();
+      await this.refreshFacultyAdminMembersPanel();
+
+      status.textContent =
+        data.message || `${email} was removed from Faculty/Admin access.`;
+      status.className = "dashboard-card-note add-adult-status success";
+
+      console.log("[Resident Ready Faculty] Faculty/Admin member removed.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not remove Faculty/Admin member.", error);
+      status.textContent = error.message || "Could not remove Faculty/Admin member.";
+      status.className = "dashboard-card-note add-adult-status error";
+    }
+  },
+
+  async updateFacultyAdminMemberRoleFromUI(email = "") {
+    const status = document.getElementById("addAdultMemberStatus");
+    const select = document.querySelector(
+      `.faculty-admin-member-role-select[data-member-email="${CSS.escape(email)}"]`
+    );
+
+    if (!status || !select) return;
+
+    if (!this.isPrimaryAdmin()) {
+      status.textContent = "Only the Primary Admin can update Faculty/Admin roles.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
+    if (!email) {
+      status.textContent = "Could not identify the member to update.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
+    const role = select.value;
+    const roleLabel = role === "admin" ? "Admin" : "Faculty";
+
+    const confirmed = window.confirm(
+      `Update ${email} to ${roleLabel}?`
+    );
+
+    if (!confirmed) return;
+
+    status.textContent = "Updating Faculty/Admin member role...";
+    status.className = "dashboard-card-note add-adult-status";
+
+    try {
+      const data = await this.apiFetch("updateOrganizationAdultMember", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          email,
+          role
+        })
+      });
+
+      await this.refreshOrganizationAccess();
+      await this.refreshFacultyAdminMembersPanel();
+
+      status.textContent = data.message || `${email} is now ${roleLabel}.`;
+      status.className = "dashboard-card-note add-adult-status success";
+
+      console.log("[Resident Ready Faculty] Faculty/Admin member role updated.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not update Faculty/Admin member role.", error);
+      status.textContent = error.message || "Could not update Faculty/Admin member role.";
+      status.className = "dashboard-card-note add-adult-status error";
+    }
+  },
+
   renderAdultMemberRoleOptions() {
     const roleSelect = document.getElementById("adultMemberRoleSelect");
     if (!roleSelect) return;
@@ -1294,6 +1717,12 @@ window.FacultyApp = {
       return;
     }
 
+    if (!this.isOrgAdmin()) {
+      status.textContent = "Admin permission is required to add faculty or admins.";
+      status.className = "dashboard-card-note add-adult-status error";
+      return;
+    }
+
     if (!this.selectedOrganizationId) {
       status.textContent = "Select an organization before adding faculty or admins.";
       status.className = "dashboard-card-note add-adult-status error";
@@ -1314,7 +1743,7 @@ window.FacultyApp = {
       return;
     }
 
-    status.textContent = "Adding organization member...";
+    status.textContent = "Adding faculty/admin member...";
     status.className = "dashboard-card-note add-adult-status";
     button.disabled = true;
 
@@ -1332,15 +1761,16 @@ window.FacultyApp = {
 
       await this.refreshOrganizationAccess();
       this.renderAdultMemberRoleOptions();
+      await this.refreshFacultyAdminMembersPanel();
 
       status.textContent =
         data.message ||
-        `${email} was added as ${role}. They can sign in with Google to access this organization.`;
+        `${email} was added as ${role === "admin" ? "Admin" : "Faculty"}. They can sign in with Google to access this organization.`;
       status.className = "dashboard-card-note add-adult-status success";
 
-      console.log("[Resident Ready Faculty] Adult member added.", data);
+      console.log("[Resident Ready Faculty] Faculty/admin member added.", data);
     } catch (error) {
-      console.warn("[Resident Ready Faculty] Could not add adult member.", error);
+      console.warn("[Resident Ready Faculty] Could not add faculty/admin member.", error);
       status.textContent = error.message || "Could not add faculty/admin member.";
       status.className = "dashboard-card-note add-adult-status error";
     } finally {
@@ -1529,6 +1959,26 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     if (!select) return;
 
     const currentValue = this.selectedCohortId;
+    const isFacultyOnly = this.isFacultyOnly();
+
+    if (isFacultyOnly && !cohorts.length) {
+      select.innerHTML = `<option value="">No assigned cohorts</option>`;
+      this.selectedCohortId = "";
+      return;
+    }
+
+    if (isFacultyOnly) {
+      select.innerHTML = cohorts.map((cohort) => `
+        <option value="${this.escapeAttribute(cohort.cohortId)}">
+          ${cohort.label}
+        </option>
+      `).join("");
+
+      const hasCurrentValue = cohorts.some((cohort) => cohort.cohortId === currentValue);
+      this.selectedCohortId = hasCurrentValue ? currentValue : cohorts[0].cohortId;
+      select.value = this.selectedCohortId;
+      return;
+    }
 
     select.innerHTML = `
       <option value="all">All Cohorts</option>
@@ -1695,23 +2145,14 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.latestOrganizationMemberships = [];
     this.latestOrganizationCohorts = [];
     this.latestAllOrganizationCohorts = [];
+    this.latestOrganizationAdultMembers = [];
     this.latestCreatedResidentAccessCode = null;
     this.selectedOrganizationId = "";
-    const addAdultMemberBtn = document.getElementById("addAdultMemberBtn");
-    if (addAdultMemberBtn) {
-      addAdultMemberBtn.addEventListener("click", () => {
-        this.addAdultMemberFromUI();
-      });
-    }
 
-    const adultMemberEmailInput = document.getElementById("adultMemberEmailInput");
-    if (adultMemberEmailInput) {
-      adultMemberEmailInput.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        this.addAdultMemberFromUI();
-      });
-    }
+    this.renderOrganizationSelector([]);
+    this.renderRoleBasedControls();
+    this.renderFacultyAdminMemberList();
+    this.renderResidentAccessCodeCohortOptions();
     this.renderCreatedResidentAccessCode(null);
     this.renderManageCohortsPanel();
     this.renderPromoteCohortOptions();
@@ -1786,6 +2227,50 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       const allBackendCohorts = this.normalizeAllCohorts(cohortData?.cohorts || []);
       const backendCohorts = allBackendCohorts.filter((cohort) => cohort.status !== "archived");
       this.latestAllOrganizationCohorts = allBackendCohorts;
+      this.latestOrganizationCohorts = backendCohorts;
+
+      if (this.isFacultyOnly()) {
+        if (!backendCohorts.length) {
+          this.selectedCohortId = "";
+          this.renderCohortSelector([]);
+          this.renderResidentAccessCodeCohortOptions();
+          await this.refreshFacultyAdminMembersPanel();
+
+          residentCount.textContent = "0";
+          this.renderCohortSummary([], []);
+          this.renderCohortHighlights([]);
+
+          status.textContent =
+            "No cohorts are assigned to your Faculty account yet. Ask an Admin to assign cohort access.";
+          rosterList.innerHTML = `
+            <div class="diagnostic-history-empty-state">
+              <strong>No assigned cohorts yet.</strong>
+              <p>Your Faculty dashboard will load after an Admin assigns you to one or more cohorts.</p>
+            </div>
+          `;
+          recentAttemptsList.innerHTML = `
+            <div class="diagnostic-history-empty-state">
+              <strong>No assigned cohorts yet.</strong>
+              <p>Recent attempts will appear after cohort access is assigned.</p>
+            </div>
+          `;
+          detailPanel.innerHTML = `
+            <div class="diagnostic-history-empty-state">
+              <strong>No faculty-safe review available yet.</strong>
+              <p>Faculty-safe reviews require assigned cohort access.</p>
+            </div>
+          `;
+          return;
+        }
+
+        const selectedStillAllowed = backendCohorts.some((cohort) =>
+          cohort.cohortId === this.selectedCohortId
+        );
+
+        if (!selectedStillAllowed) {
+          this.selectedCohortId = backendCohorts[0].cohortId;
+        }
+      }
 
       const data = await this.loadFacultyIndex();
 
@@ -1806,6 +2291,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       this.renderResidentAccessCodeCohortOptions();
       this.renderManageCohortsPanel();
       this.renderPromoteCohortOptions();
+      await this.refreshFacultyAdminMembersPanel();
 
       const filteredResidents = residents;
       const filteredAttempts = attempts;
@@ -1871,6 +2357,12 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
 
     if (!this.hasValidBackendSession()) {
       status.textContent = "Sign in before moving a resident.";
+      status.className = "dashboard-card-note roster-action-status error";
+      return;
+    }
+
+    if (!this.isOrgAdmin()) {
+      status.textContent = "Admin permission is required to move residents between cohorts.";
       status.className = "dashboard-card-note roster-action-status error";
       return;
     }
@@ -1954,19 +2446,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     rosterList.innerHTML = residents
       .map((resident) => {
         const currentCohortId = resident.cohortId || "unassigned";
-
-        return `
-          <div class="attempt-history-item faculty-roster-item">
-            <div>
-              <strong>${this.escapeHtml(resident.residentName || resident.displayName || resident.residentEmail || "Unnamed Resident")}</strong>
-              <span>${this.escapeHtml(resident.residentEmail || "No email")} · ${this.escapeHtml(resident.cohortLabel || currentCohortId)}</span>
-            </div>
-
-            <div>
-              <strong>${resident.latestPercentCorrect ?? "--"}%</strong>
-              <span>${this.escapeHtml(resident.programYear || "No year")} · ${this.escapeHtml(resident.specialtyTrack || "No specialty")}</span>
-            </div>
-
+        const moveControlsHtml = this.isOrgAdmin()
+          ? `
             <div class="faculty-roster-move-controls">
               <label>
                 Move to
@@ -1986,6 +2467,22 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
                 Move
               </button>
             </div>
+          `
+          : "";
+
+        return `
+          <div class="attempt-history-item faculty-roster-item ${this.isOrgAdmin() ? "" : "faculty-roster-readonly"}">
+            <div>
+              <strong>${this.escapeHtml(resident.residentName || resident.displayName || resident.residentEmail || "Unnamed Resident")}</strong>
+              <span>${this.escapeHtml(resident.residentEmail || "No email")} · ${this.escapeHtml(resident.cohortLabel || currentCohortId)}</span>
+            </div>
+
+            <div>
+              <strong>${resident.latestPercentCorrect ?? "--"}%</strong>
+              <span>${this.escapeHtml(resident.programYear || "No year")} · ${this.escapeHtml(resident.specialtyTrack || "No specialty")}</span>
+            </div>
+
+            ${moveControlsHtml}
           </div>
         `;
       })
@@ -2190,7 +2687,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         this.selectedCohortId = "all";
         this.latestCreatedResidentAccessCode = null;
         this.renderCreatedResidentAccessCode(null);
-        this.renderAdultMemberRoleOptions();
+        this.renderRoleBasedControls();
+        this.refreshFacultyAdminMembersPanel();
         this.renderFacultyPreview();
       });
     }
@@ -2207,6 +2705,47 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       cohortSelect.addEventListener("change", (event) => {
         this.selectedCohortId = event.target.value || "all";
         this.renderFacultyPreview();
+      });
+    }
+
+        const addAdultMemberBtn = document.getElementById("addAdultMemberBtn");
+    if (addAdultMemberBtn) {
+      addAdultMemberBtn.addEventListener("click", () => {
+        this.addAdultMemberFromUI();
+      });
+    }
+
+    const adultMemberEmailInput = document.getElementById("adultMemberEmailInput");
+    if (adultMemberEmailInput) {
+      adultMemberEmailInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        this.addAdultMemberFromUI();
+      });
+    }
+
+    const facultyAdminMemberList = document.getElementById("facultyAdminMemberList");
+    if (facultyAdminMemberList) {
+      facultyAdminMemberList.addEventListener("click", (event) => {
+        const updateBtn = event.target.closest(".update-faculty-admin-member-role-btn");
+        const removeBtn = event.target.closest(".remove-faculty-admin-member-btn");
+        const saveCohortAccessBtn = event.target.closest(".save-faculty-cohort-access-btn");
+
+        if (saveCohortAccessBtn) {
+          this.saveFacultyCohortAssignmentsFromUI(
+            saveCohortAccessBtn.dataset.memberEmail || ""
+          );
+          return;
+        }
+
+        if (updateBtn) {
+          this.updateFacultyAdminMemberRoleFromUI(updateBtn.dataset.memberEmail || "");
+          return;
+        }
+
+        if (removeBtn) {
+          this.removeFacultyAdminMemberFromUI(removeBtn.dataset.memberEmail || "");
+        }
       });
     }
 

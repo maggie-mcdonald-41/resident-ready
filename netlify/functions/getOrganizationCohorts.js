@@ -35,7 +35,7 @@ exports.handler = async function (event) {
 
     connectLambda(event);
 
-    await requireFacultyOrAdmin(requester, organizationId);
+    const membership = await requireFacultyOrAdmin(requester, organizationId);
 
     const organizationStore = getStore("resident-ready-organizations");
     const organization = await organizationStore.get(`organizations/${organizationId}.json`, {
@@ -54,13 +54,31 @@ exports.handler = async function (event) {
       { type: "json" }
     );
 
+    const allCohorts = Array.isArray(cohortIndex?.cohorts)
+      ? cohortIndex.cohorts
+      : [];
+
+    const visibleCohorts =
+      membership.role === "faculty"
+        ? allCohorts.filter((cohort) => {
+            const assignedCohortIds = Array.isArray(membership.assignedCohortIds)
+              ? membership.assignedCohortIds
+              : [];
+
+            return (
+              cohort.status !== "archived" &&
+              assignedCohortIds.includes(cohort.cohortId)
+            );
+          })
+        : allCohorts;
+
     return withCors(jsonResponse(200, {
       success: true,
       organization: {
         organizationId,
         organizationName: organization.organizationName
       },
-      cohorts: Array.isArray(cohortIndex?.cohorts) ? cohortIndex.cohorts : []
+      cohorts: visibleCohorts
     }));
   } catch (error) {
     console.error("[getOrganizationCohorts] Error:", error);

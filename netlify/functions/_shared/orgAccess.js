@@ -70,6 +70,47 @@ async function requireFacultyOrAdmin(user = {}, organizationId = "") {
   ]);
 }
 
+function isOrgAdminMembership(membership = {}) {
+  return ["primary_admin", "admin"].includes(membership.role);
+}
+
+function getAssignedCohortIds(membership = {}) {
+  return Array.isArray(membership.assignedCohortIds)
+    ? membership.assignedCohortIds.filter(Boolean)
+    : [];
+}
+
+function canAccessCohort(membership = {}, cohortId = "") {
+  if (isOrgAdminMembership(membership)) return true;
+
+  if (membership.role !== "faculty") return false;
+
+  const assignedCohortIds = getAssignedCohortIds(membership);
+
+  if (!assignedCohortIds.length) return false;
+  if (assignedCohortIds.includes("all")) return true;
+
+  return assignedCohortIds.includes(cohortId);
+}
+
+async function requireFacultyCohortAccess(user = {}, organizationId = "", cohortId = "") {
+  const membership = await requireFacultyOrAdmin(user, organizationId);
+
+  if (isOrgAdminMembership(membership)) {
+    return membership;
+  }
+
+  if (!cohortId || cohortId === "all") {
+    throw new Error("Select an assigned cohort to view faculty data.");
+  }
+
+  if (!canAccessCohort(membership, cohortId)) {
+    throw new Error("You do not have access to this cohort.");
+  }
+
+  return membership;
+}
+
 function mergeUserMembership(existing = {}, membership = {}) {
   const memberships = Array.isArray(existing.memberships)
     ? existing.memberships
@@ -98,5 +139,9 @@ module.exports = {
   requireOrganizationRole,
   requireOrgAdmin,
   requireFacultyOrAdmin,
+  requireFacultyCohortAccess,
+  isOrgAdminMembership,
+  getAssignedCohortIds,
+  canAccessCohort,
   mergeUserMembership
 };
