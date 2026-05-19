@@ -5,6 +5,8 @@ window.App = {
   residentBackendSessionKey: "residentReadyBackendSession_v1",
   googleSignInInitialized: false,
   latestResidentOrganizationMemberships: [],
+  latestResidentAssignments: [],
+  activeAssignmentContext: null,
   showView(viewId) {
     document.querySelectorAll(".app-view").forEach((view) => {
       view.classList.remove("active-view");
@@ -811,6 +813,131 @@ window.App = {
     status.className = "resident-join-status";
   },
 
+    async loadResidentAssignments() {
+    if (!this.hasValidResidentBackendSession()) {
+      this.latestResidentAssignments = [];
+      this.renderResidentAssignedWork();
+      return [];
+    }
+
+    const data = await this.residentApiFetch("getResidentAssignments", {
+      method: "GET"
+    });
+
+    this.latestResidentAssignments = Array.isArray(data.assignments)
+      ? data.assignments
+      : [];
+
+    this.renderResidentAssignedWork();
+
+    console.log("[Resident Ready] Loaded assigned work.", this.latestResidentAssignments);
+
+    return this.latestResidentAssignments;
+  },
+
+  formatAssignmentDueDate(value) {
+    if (!value) return "No due date";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "No due date";
+
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  },
+
+  renderResidentAssignedWork() {
+    const list = document.getElementById("residentAssignedWorkList");
+    if (!list) return;
+
+    if (!this.hasValidResidentBackendSession()) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Sign in to load assigned work.</strong>
+          <p>Your assignments will appear after you connect your Resident Ready account.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const activeMembership = this.getActiveResidentMembership();
+
+    if (!activeMembership) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No institution connected yet.</strong>
+          <p>Join your institution with an access code to receive assigned work.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const assignments = Array.isArray(this.latestResidentAssignments)
+      ? this.latestResidentAssignments
+      : [];
+
+    if (!assignments.length) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No assigned work yet.</strong>
+          <p>Your faculty or program can assign diagnostics after you join a cohort.</p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = assignments
+      .map((assignment) => `
+        <div class="resident-assignment-card">
+          <div>
+            <strong>${assignment.title || "Assigned Diagnostic"}</strong>
+            <span>${assignment.cohortLabel || assignment.cohortId || "Cohort"} · Due ${this.formatAssignmentDueDate(assignment.dueDate)}</span>
+            ${
+              assignment.instructions
+                ? `<p>${assignment.instructions}</p>`
+                : ""
+            }
+          </div>
+
+          <button
+            class="secondary start-assignment-btn"
+            type="button"
+            data-assignment-id="${assignment.assignmentId}"
+          >
+            Start Diagnostic
+          </button>
+        </div>
+      `)
+      .join("");
+  },
+
+  startAssignedDiagnostic(assignmentId = "") {
+    const assignment = this.latestResidentAssignments.find(
+      (item) => item.assignmentId === assignmentId
+    );
+
+    if (!assignment) {
+      alert("This assignment could not be found. Refresh assigned work and try again.");
+      return;
+    }
+
+    this.activeAssignmentContext = {
+      assignmentId: assignment.assignmentId,
+      assignmentTitle: assignment.title,
+      activityType: assignment.activityType || "diagnostic",
+      organizationId: assignment.organizationId,
+      organizationName: assignment.organizationName,
+      cohortId: assignment.cohortId,
+      cohortLabel: assignment.cohortLabel,
+      dueDate: assignment.dueDate || null
+    };
+
+    window.ResidentTestUI.start();
+  },
+
+
   async joinOrganizationWithCode() {
     const input = document.getElementById("residentAccessCodeInput");
     const status = document.getElementById("residentJoinInstitutionStatus");
@@ -844,6 +971,7 @@ window.App = {
       input.value = "";
 
       await this.loadResidentOrganizations();
+      await this.loadResidentAssignments();
 
       status.textContent =
         `Connected to ${data.organization?.organizationName || "your institution"}${data.cohort?.label ? ` · ${data.cohort.label}` : ""}.`;
@@ -1068,7 +1196,7 @@ window.App = {
         type,
         focusTag,
         focusLabel,
-        assignmentContext: metadata.assignmentContext || null,
+        assignmentContext: metadata.assignmentContext || this.activeAssignmentContext || null,
         facultyReviewSnapshot: this.buildFacultySafeReviewSnapshot(scoredAttempt),
         residentProfileSnapshot: {
         displayName: profile.displayName || "",
@@ -1092,6 +1220,8 @@ window.App = {
     memory.attempts = [record, ...(memory.attempts || [])].slice(0, 50);
 
     this.saveResidentMemory(memory);
+
+    this.activeAssignmentContext = null;
 
     if (this.hasValidResidentBackendSession()) {
       this.saveResidentAttemptToBackend(record).catch((error) => {
@@ -1681,6 +1811,7 @@ init() {
 
   this.loadResidentProfileFromBackend()
     .then(() => this.loadResidentOrganizations())
+    .then(() => this.loadResidentAssignments())
     .then(() => this.loadResidentAttemptsFromBackend())
     .catch((error) => {
       console.warn("[Resident Ready] Could not load backend resident data on startup.", error);
@@ -1690,7 +1821,18 @@ init() {
   const startBtn = document.getElementById("startDiagnosticBtn");
   if (startBtn) {
     startBtn.addEventListener("click", () => {
+      this.activeAssignmentContext = null;
       window.ResidentTestUI.start();
+    });
+  }
+
+  const residentAssignedWorkList = document.getElementById("residentAssignedWorkList");
+  if (residentAssignedWorkList) {
+    residentAssignedWorkList.addEventListener("click", (event) => {
+      const startAssignmentBtn = event.target.closest(".start-assignment-btn");
+      if (!startAssignmentBtn) return;
+
+      this.startAssignedDiagnostic(startAssignmentBtn.dataset.assignmentId || "");
     });
   }
 

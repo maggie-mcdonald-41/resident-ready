@@ -9,6 +9,7 @@ window.FacultyApp = {
   latestAllOrganizationCohorts: [],
   selectedCohortId: "all",
   latestFacultyIndexData: null,
+  latestFacultyAssignments: [],
   latestCreatedResidentAccessCode: null,
   showHistoricalCohortAttempts: false,
 
@@ -893,6 +894,306 @@ window.FacultyApp = {
       console.warn("[Resident Ready Faculty] Could not promote cohort.", error);
       status.textContent = error.message || "Could not promote cohort.";
       status.className = "dashboard-card-note promote-cohort-status error";
+    } finally {
+      button.disabled = false;
+    }
+  },
+
+  async loadFacultyAssignments() {
+    if (!this.hasValidBackendSession() || !this.selectedOrganizationId) {
+      this.latestFacultyAssignments = [];
+      return [];
+    }
+
+    const query = new URLSearchParams({
+      organizationId: this.selectedOrganizationId
+    });
+
+    if (this.selectedCohortId && this.selectedCohortId !== "all") {
+      query.set("cohortId", this.selectedCohortId);
+    }
+
+    const data = await this.apiFetch(`getFacultyAssignments?${query.toString()}`, {
+      method: "GET"
+    });
+
+    this.latestFacultyAssignments = Array.isArray(data.assignments)
+      ? data.assignments
+      : [];
+
+    return this.latestFacultyAssignments;
+  },
+
+  formatAssignmentDueDate(value) {
+    if (!value) return "No due date";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "No due date";
+
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  },
+
+  renderAssignmentCompletionRows(rows = []) {
+    if (!rows.length) {
+      return `
+        <div class="diagnostic-history-empty-state">
+          <strong>No residents are currently attached to this assignment.</strong>
+          <p>This can happen if the assignment was created before residents joined the cohort.</p>
+        </div>
+      `;
+    }
+
+    return rows
+      .map((row) => {
+        const completed = row.status === "completed";
+        const scoreClass = completed
+          ? this.getScoreClass(row.percentCorrect)
+          : "growth-steady";
+
+        return `
+          <div class="assignment-completion-row">
+            <div>
+              <strong>${this.escapeHtml(row.residentName || row.residentEmail || "Unnamed Resident")}</strong>
+              <span>${this.escapeHtml(row.residentEmail || "No email")}</span>
+            </div>
+
+            <div>
+              <strong class="${scoreClass}">
+                ${completed ? `${row.percentCorrect ?? "--"}%` : "Not Started"}
+              </strong>
+              <span>
+                ${
+                  completed
+                    ? `${row.correctCount ?? "--"}/${row.totalQuestions ?? "--"} correct · ${this.formatDate(row.completedAt)}`
+                    : "No submitted attempt yet"
+                }
+              </span>
+            </div>
+
+            ${
+              completed
+                ? `<button
+                    class="secondary faculty-review-attempt-btn"
+                    type="button"
+                    data-resident-id="${this.escapeAttribute(row.residentId)}"
+                    data-attempt-id="${this.escapeAttribute(row.attemptId)}"
+                    data-faculty-scope="${this.escapeAttribute(row.facultyScope || "default")}"
+                  >
+                    Review
+                  </button>`
+                : `<span class="assignment-status-pill">Waiting</span>`
+            }
+          </div>
+        `;
+      })
+      .join("");
+  },
+
+  renderFacultyAssignmentsDashboard() {
+    const list = document.getElementById("facultyAssignmentsList");
+    if (!list) return;
+
+    const assignments = Array.isArray(this.latestFacultyAssignments)
+      ? this.latestFacultyAssignments
+      : [];
+
+    if (!this.selectedOrganizationId) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No organization selected.</strong>
+          <p>Select an organization to load assignments.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (!assignments.length) {
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No assignments yet.</strong>
+          <p>Create a diagnostic assignment above. Completion tracking will appear here after residents submit work.</p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = assignments
+      .map((assignment) => {
+        const completion = assignment.completion || {};
+        const averageScore = completion.averageScore === null || completion.averageScore === undefined
+          ? "--%"
+          : `${completion.averageScore}%`;
+
+        return `
+          <article class="faculty-assignment-card">
+            <div class="faculty-assignment-card-header">
+              <div>
+                <strong>${this.escapeHtml(assignment.title || "Diagnostic Assignment")}</strong>
+                <span>
+                  ${this.escapeHtml(assignment.cohortLabel || assignment.cohortId || "Cohort")}
+                  · Due ${this.formatAssignmentDueDate(assignment.dueDate)}
+                </span>
+                ${
+                  assignment.instructions
+                    ? `<p>${this.escapeHtml(assignment.instructions)}</p>`
+                    : ""
+                }
+              </div>
+
+              <div class="faculty-assignment-metrics">
+                <div>
+                  <span>Completed</span>
+                  <strong>${completion.completedCount || 0}/${completion.assignedCount || 0}</strong>
+                </div>
+                <div>
+                  <span>Average</span>
+                  <strong>${averageScore}</strong>
+                </div>
+                <div>
+                  <span>Waiting</span>
+                  <strong>${completion.notStartedCount || 0}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="assignment-completion-list">
+              ${this.renderAssignmentCompletionRows(assignment.completionRows || [])}
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  },
+
+  async refreshFacultyAssignmentsPanel() {
+    const list = document.getElementById("facultyAssignmentsList");
+    if (!list) return;
+
+    if (!this.hasValidBackendSession() || !this.selectedOrganizationId) {
+      this.latestFacultyAssignments = [];
+      this.renderFacultyAssignmentsDashboard();
+      return;
+    }
+
+    try {
+      await this.loadFacultyAssignments();
+      this.renderFacultyAssignmentsDashboard();
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not load assignments.", error);
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Could not load assignments.</strong>
+          <p>${this.escapeHtml(error.message || "Check the console for details.")}</p>
+        </div>
+      `;
+    }
+  },
+
+
+    renderAssignmentCohortOptions() {
+    const select = document.getElementById("assignmentCohortSelect");
+    if (!select) return;
+
+    const cohorts = Array.isArray(this.latestOrganizationCohorts)
+      ? this.latestOrganizationCohorts
+      : [];
+
+    if (!cohorts.length) {
+      select.innerHTML = `<option value="">No active cohorts available</option>`;
+      return;
+    }
+
+    select.innerHTML = cohorts
+      .map((cohort) => `
+        <option value="${this.escapeAttribute(cohort.cohortId)}">
+          ${this.escapeHtml(cohort.label)}
+        </option>
+      `)
+      .join("");
+
+    if (this.selectedCohortId && this.selectedCohortId !== "all") {
+      select.value = this.selectedCohortId;
+    }
+  },
+
+  async createAssignmentFromUI() {
+    const cohortSelect = document.getElementById("assignmentCohortSelect");
+    const titleInput = document.getElementById("assignmentTitleInput");
+    const dueDateInput = document.getElementById("assignmentDueDateInput");
+    const instructionsInput = document.getElementById("assignmentInstructionsInput");
+    const status = document.getElementById("createAssignmentStatus");
+    const button = document.getElementById("createAssignmentBtn");
+
+    if (!cohortSelect || !titleInput || !dueDateInput || !instructionsInput || !status || !button) {
+      return;
+    }
+
+    const cohortId = cohortSelect.value;
+    const title = titleInput.value.trim();
+    const dueDate = dueDateInput.value;
+    const instructions = instructionsInput.value.trim();
+
+    if (!this.hasValidBackendSession()) {
+      status.textContent = "Sign in before creating assignments.";
+      status.className = "dashboard-card-note assignment-status error";
+      return;
+    }
+
+    if (!this.selectedOrganizationId) {
+      status.textContent = "Select an organization before creating assignments.";
+      status.className = "dashboard-card-note assignment-status error";
+      return;
+    }
+
+    if (!cohortId) {
+      status.textContent = "Select a target cohort.";
+      status.className = "dashboard-card-note assignment-status error";
+      cohortSelect.focus();
+      return;
+    }
+
+    if (!title) {
+      status.textContent = "Enter an assignment title.";
+      status.className = "dashboard-card-note assignment-status error";
+      titleInput.focus();
+      return;
+    }
+
+    status.textContent = "Creating diagnostic assignment...";
+    status.className = "dashboard-card-note assignment-status";
+    button.disabled = true;
+
+    try {
+      const data = await this.apiFetch("createAssignment", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          cohortId,
+          title,
+          activityType: "diagnostic",
+          dueDate,
+          instructions
+        })
+      });
+
+      titleInput.value = "";
+      dueDateInput.value = "";
+      instructionsInput.value = "";
+
+      await this.refreshFacultyAssignmentsPanel();
+
+      status.textContent = data.message || "Assignment created.";
+      status.className = "dashboard-card-note assignment-status success";
+
+      console.log("[Resident Ready Faculty] Assignment created.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not create assignment.", error);
+      status.textContent = error.message || "Could not create assignment.";
+      status.className = "dashboard-card-note assignment-status error";
     } finally {
       button.disabled = false;
     }
@@ -2157,6 +2458,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.latestOrganizationCohorts = [];
     this.latestAllOrganizationCohorts = [];
     this.latestOrganizationAdultMembers = [];
+    this.latestFacultyAssignments = [];
     this.latestCreatedResidentAccessCode = null;
     this.selectedOrganizationId = "";
 
@@ -2167,6 +2469,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.renderCreatedResidentAccessCode(null);
     this.renderManageCohortsPanel();
     this.renderPromoteCohortOptions();
+    this.renderFacultyAssignmentsDashboard();
 
     this.renderCohortSummary([], []);
     this.renderHighlightList("facultyCohortStrengthsList", [], "Sign in to view cohort strengths.");
@@ -2247,7 +2550,9 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
           this.selectedCohortId = "";
           this.renderCohortSelector([]);
           this.renderResidentAccessCodeCohortOptions();
+          this.renderAssignmentCohortOptions();
           await this.refreshFacultyAdminMembersPanel();
+          await this.refreshFacultyAssignmentsPanel();
 
           residentCount.textContent = "0";
           this.renderCohortSummary([], []);
@@ -2304,7 +2609,9 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       this.renderResidentAccessCodeCohortOptions();
       this.renderManageCohortsPanel();
       this.renderPromoteCohortOptions();
+      this.renderAssignmentCohortOptions();
       await this.refreshFacultyAdminMembersPanel();
+      await this.refreshFacultyAssignmentsPanel();
 
       const filteredResidents = residents;
       const filteredAttempts = attempts;
@@ -3197,6 +3504,27 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     if (promoteCohortBtn) {
       promoteCohortBtn.addEventListener("click", () => {
         this.promoteCohortFromUI();
+      });
+    }
+
+    const createAssignmentBtn = document.getElementById("createAssignmentBtn");
+    if (createAssignmentBtn) {
+      createAssignmentBtn.addEventListener("click", () => {
+        this.createAssignmentFromUI();
+      });
+    }
+
+    const facultyAssignmentsList = document.getElementById("facultyAssignmentsList");
+    if (facultyAssignmentsList) {
+      facultyAssignmentsList.addEventListener("click", (event) => {
+        const reviewBtn = event.target.closest(".faculty-review-attempt-btn");
+        if (!reviewBtn) return;
+
+        this.openFacultyAttemptDetail(
+          reviewBtn.dataset.residentId,
+          reviewBtn.dataset.attemptId,
+          reviewBtn.dataset.facultyScope || "default"
+        );
       });
     }
 

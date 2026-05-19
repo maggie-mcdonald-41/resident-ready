@@ -298,6 +298,70 @@
           </p>
         </section>
 
+        <section class="faculty-assignment-panel">
+          <div>
+            <p class="eyebrow-label">Assignments</p>
+            <h3>Create Diagnostic Assignment</h3>
+            <p>
+              Assign a diagnostic to a selected cohort. Residents will see it in their Assigned Work panel.
+            </p>
+          </div>
+
+          <div class="faculty-assignment-actions">
+            <label for="assignmentCohortSelect">
+              Target Cohort
+              <select id="assignmentCohortSelect">
+                <option value="">Select cohort</option>
+              </select>
+            </label>
+
+            <label for="assignmentTitleInput">
+              Assignment Title
+              <input
+                id="assignmentTitleInput"
+                type="text"
+                placeholder="Example: Week 1 Diagnostic"
+                autocomplete="off"
+              />
+            </label>
+
+            <label for="assignmentDueDateInput">
+              Due Date
+              <input id="assignmentDueDateInput" type="date" />
+            </label>
+
+            <label for="assignmentInstructionsInput" class="assignment-instructions-label">
+              Instructions
+              <textarea
+                id="assignmentInstructionsInput"
+                placeholder="Optional note for residents"
+                rows="2"
+              ></textarea>
+            </label>
+
+            <button id="createAssignmentBtn" class="secondary" type="button">
+              Create Assignment
+            </button>
+          </div>
+
+          <p id="createAssignmentStatus" class="dashboard-card-note assignment-status">
+            Select a cohort and create a diagnostic assignment.
+          </p>
+
+          <div class="faculty-assignment-dashboard-box">
+            <div class="faculty-assignment-dashboard-header">
+              <strong>Assignment Dashboard</strong>
+              <p>
+                Track completion for assignments in the selected organization and cohort.
+              </p>
+            </div>
+
+            <div id="facultyAssignmentsList" class="faculty-assignments-list">
+              Assignments will load after selecting an organization and cohort.
+            </div>
+          </div>
+        </section>
+
         <section class="faculty-access-code-panel">
           <div>
             <p class="eyebrow-label">Resident Access</p>

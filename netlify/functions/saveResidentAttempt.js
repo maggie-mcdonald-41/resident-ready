@@ -134,6 +134,9 @@ function buildAttemptSummary(record = {}, resident = {}, organizationContext = {
     missedCount: Math.max(0, totalQuestions - correctCount),
     flaggedCount,
     totalTimeSeconds: safeNumber(scoredAttempt.totalTimeSeconds, 0),
+    assignmentContext: record.assignmentContext || null,
+    assignmentId: record.assignmentContext?.assignmentId || null,
+    assignmentTitle: record.assignmentContext?.assignmentTitle || null,
     studentFeedbackSnapshot: {
       scoreLine: studentFeedback.scoreLine || "",
       strengthsLine: studentFeedback.strengthsLine || "",

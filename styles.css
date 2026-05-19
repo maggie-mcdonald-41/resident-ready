@@ -2846,6 +2846,273 @@ body.dark-mode .faculty-promote-cohort-actions select {
 }
 
 /* =========================================================
+   FACULTY ASSIGNMENT PANEL
+   ========================================================= */
+
+.faculty-assignment-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(560px, 1fr);
+  align-items: center;
+  gap: 24px;
+  margin: 18px 0;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  background: rgba(62, 92, 118, 0.08);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  border-left: 8px solid var(--blue-slate);
+}
+
+.faculty-assignment-panel h3,
+.faculty-assignment-panel p {
+  margin: 0;
+}
+
+.faculty-assignment-actions {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(150px, 0.6fr);
+  align-items: end;
+  gap: 12px;
+}
+
+.faculty-assignment-actions label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-assignment-actions input,
+.faculty-assignment-actions select,
+.faculty-assignment-actions textarea {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.35);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.assignment-instructions-label {
+  grid-column: 1 / -1;
+}
+
+.faculty-assignment-actions button {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.faculty-assignment-dashboard-box {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+}
+
+.faculty-assignment-dashboard-header strong {
+  display: block;
+  color: var(--deep-space);
+  margin-bottom: 4px;
+}
+
+.faculty-assignment-dashboard-header p {
+  margin: 0;
+  color: var(--blue-slate);
+  font-weight: 700;
+}
+
+.faculty-assignments-list {
+  display: grid;
+  gap: 14px;
+}
+
+.faculty-assignment-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.12);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.faculty-assignment-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.faculty-assignment-card-header strong,
+.faculty-assignment-card-header span {
+  display: block;
+}
+
+.faculty-assignment-card-header span {
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-weight: 800;
+}
+
+.faculty-assignment-card-header p {
+  margin-top: 8px;
+  color: var(--deep-space);
+  font-weight: 700;
+}
+
+.faculty-assignment-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.faculty-assignment-metrics div {
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(62, 92, 118, 0.12);
+}
+
+.faculty-assignment-metrics span {
+  display: block;
+  color: var(--blue-slate);
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+.faculty-assignment-metrics strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--deep-space);
+  font-size: 1.2rem;
+}
+
+.assignment-completion-list {
+  display: grid;
+  gap: 10px;
+}
+
+.assignment-completion-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(160px, 0.55fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.64);
+  border: 1px solid rgba(62, 92, 118, 0.12);
+}
+
+.assignment-completion-row strong,
+.assignment-completion-row span {
+  display: block;
+}
+
+.assignment-completion-row span {
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.assignment-status-pill {
+  justify-self: end;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.12);
+  color: var(--blue-slate);
+  font-weight: 900;
+}
+
+body.dark-mode .faculty-assignment-dashboard-box,
+body.dark-mode .faculty-assignment-card,
+body.dark-mode .faculty-assignment-metrics div,
+body.dark-mode .assignment-completion-row {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-assignment-dashboard-header strong,
+body.dark-mode .faculty-assignment-dashboard-header p,
+body.dark-mode .faculty-assignment-card-header span,
+body.dark-mode .faculty-assignment-card-header p,
+body.dark-mode .faculty-assignment-metrics span,
+body.dark-mode .faculty-assignment-metrics strong,
+body.dark-mode .assignment-completion-row span,
+body.dark-mode .assignment-status-pill {
+  color: var(--eggshell);
+}
+
+@media (max-width: 950px) {
+  .faculty-assignment-card-header,
+  .faculty-assignment-metrics,
+  .assignment-completion-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .assignment-completion-row button,
+  .assignment-status-pill {
+    width: 100%;
+    justify-self: stretch;
+    text-align: center;
+  }
+}
+
+.assignment-status {
+  grid-column: 1 / -1;
+}
+
+.assignment-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.assignment-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .faculty-assignment-panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-assignment-actions label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-assignment-actions input,
+body.dark-mode .faculty-assignment-actions select,
+body.dark-mode .faculty-assignment-actions textarea {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 950px) {
+  .faculty-assignment-panel,
+  .faculty-assignment-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .assignment-instructions-label {
+    grid-column: auto;
+  }
+
+  .faculty-assignment-actions button {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
    FACULTY RESIDENT ACCESS CODE PANEL
    ========================================================= */
 
@@ -2988,6 +3255,87 @@ body.dark-mode .resident-access-code-output strong {
   .resident-access-code-output {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* =========================================================
+   RESIDENT ASSIGNED WORK
+   ========================================================= */
+
+.resident-assigned-work-panel {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: rgba(62, 92, 118, 0.08);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  border-left: 8px solid var(--blue-slate);
+}
+
+.resident-assigned-work-panel h3,
+.resident-assigned-work-panel p {
+  margin: 0;
+}
+
+.resident-assigned-work-list {
+  display: grid;
+  gap: 10px;
+}
+
+.resident-assignment-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.resident-assignment-card strong,
+.resident-assignment-card span {
+  display: block;
+}
+
+.resident-assignment-card span {
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-weight: 800;
+}
+
+.resident-assignment-card p {
+  margin-top: 8px;
+  color: var(--deep-space);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.resident-assignment-card button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+body.dark-mode .resident-assigned-work-panel,
+body.dark-mode .resident-assignment-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .resident-assignment-card span,
+body.dark-mode .resident-assignment-card p {
+  color: var(--eggshell);
+}
+
+@media (max-width: 760px) {
+  .resident-assignment-card {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .resident-assignment-card button {
+    width: 100%;
   }
 }
 
