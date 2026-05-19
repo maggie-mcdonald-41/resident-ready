@@ -2992,6 +2992,80 @@ body.dark-mode .faculty-promote-cohort-actions select {
   font-size: 1.2rem;
 }
 
+.archived-assignments-toggle-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.faculty-assignment-card.is-archived {
+  opacity: 0.82;
+  border-style: dashed;
+}
+
+.assignment-manage-box {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.45fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.58);
+  border: 1px dashed rgba(62, 92, 118, 0.28);
+}
+
+.assignment-manage-box label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.assignment-manage-box input,
+.assignment-manage-box textarea {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.28);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.assignment-manage-instructions-label {
+  grid-column: 1 / -2;
+}
+
+.assignment-manage-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.assignment-manage-actions button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+body.dark-mode .assignment-manage-box {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark-mode .assignment-manage-box label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .assignment-manage-box input,
+body.dark-mode .assignment-manage-box textarea {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 .assignment-completion-list {
   display: grid;
   gap: 10px;
@@ -3051,8 +3125,18 @@ body.dark-mode .assignment-status-pill {
 @media (max-width: 950px) {
   .faculty-assignment-card-header,
   .faculty-assignment-metrics,
+  .assignment-manage-box,
   .assignment-completion-row {
     grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .assignment-manage-instructions-label {
+    grid-column: auto;
+  }
+
+  .assignment-manage-actions {
+    flex-direction: column;
     align-items: stretch;
   }
 

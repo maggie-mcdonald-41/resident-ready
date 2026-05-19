@@ -10,6 +10,7 @@ window.FacultyApp = {
   selectedCohortId: "all",
   latestFacultyIndexData: null,
   latestFacultyAssignments: [],
+  showArchivedAssignments: false,
   latestCreatedResidentAccessCode: null,
   showHistoricalCohortAttempts: false,
 
@@ -906,7 +907,8 @@ window.FacultyApp = {
     }
 
     const query = new URLSearchParams({
-      organizationId: this.selectedOrganizationId
+      organizationId: this.selectedOrganizationId,
+      includeArchived: "true"
     });
 
     if (this.selectedCohortId && this.selectedCohortId !== "all") {
@@ -936,6 +938,81 @@ window.FacultyApp = {
       year: "numeric"
     });
   },
+
+  getAssignmentInputValue(assignmentId = "", field = "") {
+    const input = document.querySelector(
+      `.assignment-manage-field[data-assignment-id="${CSS.escape(assignmentId)}"][data-field="${CSS.escape(field)}"]`
+    );
+
+    return input?.value?.trim() || "";
+  },
+
+  async updateAssignmentFromUI(assignmentId = "", action = "update") {
+    const status = document.getElementById("createAssignmentStatus");
+    if (!status) return;
+
+    const assignment = this.latestFacultyAssignments.find(
+      (item) => item.assignmentId === assignmentId
+    );
+
+    if (!assignment) {
+      status.textContent = "Could not identify the assignment to update.";
+      status.className = "dashboard-card-note assignment-status error";
+      return;
+    }
+
+    const normalizedAction = String(action || "update").trim().toLowerCase();
+
+    if (normalizedAction === "archive") {
+      const confirmed = window.confirm(
+        `Archive ${assignment.title}? Residents will no longer see it in Assigned Work.`
+      );
+
+      if (!confirmed) return;
+    }
+
+    const title = this.getAssignmentInputValue(assignmentId, "title");
+    const dueDate = this.getAssignmentInputValue(assignmentId, "dueDate");
+    const instructions = this.getAssignmentInputValue(assignmentId, "instructions");
+
+    if (normalizedAction === "update" && !title) {
+      status.textContent = "Assignment title is required.";
+      status.className = "dashboard-card-note assignment-status error";
+      return;
+    }
+
+    status.textContent =
+      normalizedAction === "archive"
+        ? "Archiving assignment..."
+        : "Updating assignment...";
+    status.className = "dashboard-card-note assignment-status";
+
+    try {
+      const data = await this.apiFetch("updateAssignment", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          assignmentId,
+          action: normalizedAction,
+          title,
+          dueDate,
+          instructions
+        })
+      });
+
+      await this.refreshFacultyAssignmentsPanel();
+
+      status.textContent = data.message || "Assignment updated.";
+      status.className = "dashboard-card-note assignment-status success";
+
+      console.log("[Resident Ready Faculty] Assignment updated.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not update assignment.", error);
+      status.textContent = error.message || "Could not update assignment.";
+      status.className = "dashboard-card-note assignment-status error";
+    }
+  },
+
 
   renderAssignmentCompletionRows(rows = []) {
     if (!rows.length) {
@@ -997,9 +1074,21 @@ window.FacultyApp = {
     const list = document.getElementById("facultyAssignmentsList");
     if (!list) return;
 
-    const assignments = Array.isArray(this.latestFacultyAssignments)
+    const allAssignments = Array.isArray(this.latestFacultyAssignments)
       ? this.latestFacultyAssignments
       : [];
+
+    const activeAssignments = allAssignments.filter((assignment) =>
+      assignment.status !== "archived"
+    );
+
+    const archivedAssignments = allAssignments.filter((assignment) =>
+      assignment.status === "archived"
+    );
+
+    const assignments = this.showArchivedAssignments
+      ? allAssignments
+      : activeAssignments;
 
     if (!this.selectedOrganizationId) {
       list.innerHTML = `
@@ -1014,59 +1103,135 @@ window.FacultyApp = {
     if (!assignments.length) {
       list.innerHTML = `
         <div class="diagnostic-history-empty-state">
-          <strong>No assignments yet.</strong>
+          <strong>No active assignments yet.</strong>
           <p>Create a diagnostic assignment above. Completion tracking will appear here after residents submit work.</p>
+          ${
+            archivedAssignments.length
+              ? `<button id="toggleArchivedAssignmentsBtn" class="secondary" type="button">Show archived assignments</button>`
+              : ""
+          }
         </div>
       `;
       return;
     }
 
-    list.innerHTML = assignments
-      .map((assignment) => {
-        const completion = assignment.completion || {};
-        const averageScore = completion.averageScore === null || completion.averageScore === undefined
-          ? "--%"
-          : `${completion.averageScore}%`;
+    const archivedToggleHtml = archivedAssignments.length
+      ? `
+        <div class="archived-assignments-toggle-row">
+          <button id="toggleArchivedAssignmentsBtn" class="secondary" type="button">
+            ${this.showArchivedAssignments ? "Hide" : "Show"} ${archivedAssignments.length} archived assignment${archivedAssignments.length === 1 ? "" : "s"}
+          </button>
+        </div>
+      `
+      : "";
 
-        return `
-          <article class="faculty-assignment-card">
-            <div class="faculty-assignment-card-header">
-              <div>
-                <strong>${this.escapeHtml(assignment.title || "Diagnostic Assignment")}</strong>
-                <span>
-                  ${this.escapeHtml(assignment.cohortLabel || assignment.cohortId || "Cohort")}
-                  · Due ${this.formatAssignmentDueDate(assignment.dueDate)}
-                </span>
-                ${
-                  assignment.instructions
-                    ? `<p>${this.escapeHtml(assignment.instructions)}</p>`
-                    : ""
-                }
+    list.innerHTML = `
+      ${archivedToggleHtml}
+      ${assignments
+        .map((assignment) => {
+          const completion = assignment.completion || {};
+          const averageScore = completion.averageScore === null || completion.averageScore === undefined
+            ? "--%"
+            : `${completion.averageScore}%`;
+          const isArchived = assignment.status === "archived";
+
+          return `
+            <article class="faculty-assignment-card ${isArchived ? "is-archived" : ""}">
+              <div class="faculty-assignment-card-header">
+                <div>
+                  <strong>${this.escapeHtml(assignment.title || "Diagnostic Assignment")}</strong>
+                  <span>
+                    ${this.escapeHtml(assignment.cohortLabel || assignment.cohortId || "Cohort")}
+                    · Due ${this.formatAssignmentDueDate(assignment.dueDate)}
+                    ${isArchived ? " · Archived" : ""}
+                  </span>
+                  ${
+                    assignment.instructions
+                      ? `<p>${this.escapeHtml(assignment.instructions)}</p>`
+                      : ""
+                  }
+                </div>
+
+                <div class="faculty-assignment-metrics">
+                  <div>
+                    <span>Completed</span>
+                    <strong>${completion.completedCount || 0}/${completion.assignedCount || 0}</strong>
+                  </div>
+                  <div>
+                    <span>Average</span>
+                    <strong>${averageScore}</strong>
+                  </div>
+                  <div>
+                    <span>Waiting</span>
+                    <strong>${completion.notStartedCount || 0}</strong>
+                  </div>
+                </div>
               </div>
 
-              <div class="faculty-assignment-metrics">
-                <div>
-                  <span>Completed</span>
-                  <strong>${completion.completedCount || 0}/${completion.assignedCount || 0}</strong>
-                </div>
-                <div>
-                  <span>Average</span>
-                  <strong>${averageScore}</strong>
-                </div>
-                <div>
-                  <span>Waiting</span>
-                  <strong>${completion.notStartedCount || 0}</strong>
-                </div>
-              </div>
-            </div>
+              ${
+                isArchived
+                  ? `<p class="dashboard-card-note">This assignment is archived and hidden from resident Assigned Work.</p>`
+                  : `<div class="assignment-manage-box">
+                      <label>
+                        Title
+                        <input
+                          class="assignment-manage-field"
+                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                          data-field="title"
+                          type="text"
+                          value="${this.escapeAttribute(assignment.title || "")}"
+                        />
+                      </label>
 
-            <div class="assignment-completion-list">
-              ${this.renderAssignmentCompletionRows(assignment.completionRows || [])}
-            </div>
-          </article>
-        `;
-      })
-      .join("");
+                      <label>
+                        Due Date
+                        <input
+                          class="assignment-manage-field"
+                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                          data-field="dueDate"
+                          type="date"
+                          value="${this.escapeAttribute(assignment.dueDate || "")}"
+                        />
+                      </label>
+
+                      <label class="assignment-manage-instructions-label">
+                        Instructions
+                        <textarea
+                          class="assignment-manage-field"
+                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                          data-field="instructions"
+                          rows="2"
+                        >${this.escapeHtml(assignment.instructions || "")}</textarea>
+                      </label>
+
+                      <div class="assignment-manage-actions">
+                        <button
+                          class="secondary update-assignment-btn"
+                          type="button"
+                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                        >
+                          Save Changes
+                        </button>
+
+                        <button
+                          class="secondary archive-assignment-btn danger-action"
+                          type="button"
+                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                        >
+                          Archive
+                        </button>
+                      </div>
+                    </div>`
+              }
+
+              <div class="assignment-completion-list">
+                ${this.renderAssignmentCompletionRows(assignment.completionRows || [])}
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    `;
   },
 
   async refreshFacultyAssignmentsPanel() {
@@ -2459,6 +2624,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.latestAllOrganizationCohorts = [];
     this.latestOrganizationAdultMembers = [];
     this.latestFacultyAssignments = [];
+    this.showArchivedAssignments = false;
     this.latestCreatedResidentAccessCode = null;
     this.selectedOrganizationId = "";
 
@@ -3380,6 +3546,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         this.selectedOrganizationId = event.target.value || "";
         this.selectedCohortId = "all";
         this.showHistoricalCohortAttempts = false;
+        this.showArchivedAssignments = false;
         this.latestCreatedResidentAccessCode = null;
         this.renderCreatedResidentAccessCode(null);
         this.renderRoleBasedControls();
@@ -3400,6 +3567,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       cohortSelect.addEventListener("change", (event) => {
         this.selectedCohortId = event.target.value || "all";
         this.showHistoricalCohortAttempts = false;
+        this.showArchivedAssignments = false;
         this.renderFacultyPreview();
       });
     }
@@ -3517,14 +3685,40 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     const facultyAssignmentsList = document.getElementById("facultyAssignmentsList");
     if (facultyAssignmentsList) {
       facultyAssignmentsList.addEventListener("click", (event) => {
+        const toggleArchivedBtn = event.target.closest("#toggleArchivedAssignmentsBtn");
+        const updateAssignmentBtn = event.target.closest(".update-assignment-btn");
+        const archiveAssignmentBtn = event.target.closest(".archive-assignment-btn");
         const reviewBtn = event.target.closest(".faculty-review-attempt-btn");
-        if (!reviewBtn) return;
 
-        this.openFacultyAttemptDetail(
-          reviewBtn.dataset.residentId,
-          reviewBtn.dataset.attemptId,
-          reviewBtn.dataset.facultyScope || "default"
-        );
+        if (toggleArchivedBtn) {
+          this.showArchivedAssignments = !this.showArchivedAssignments;
+          this.renderFacultyAssignmentsDashboard();
+          return;
+        }
+
+        if (updateAssignmentBtn) {
+          this.updateAssignmentFromUI(
+            updateAssignmentBtn.dataset.assignmentId || "",
+            "update"
+          );
+          return;
+        }
+
+        if (archiveAssignmentBtn) {
+          this.updateAssignmentFromUI(
+            archiveAssignmentBtn.dataset.assignmentId || "",
+            "archive"
+          );
+          return;
+        }
+
+        if (reviewBtn) {
+          this.openFacultyAttemptDetail(
+            reviewBtn.dataset.residentId,
+            reviewBtn.dataset.attemptId,
+            reviewBtn.dataset.facultyScope || "default"
+          );
+        }
       });
     }
 

@@ -123,6 +123,7 @@ exports.handler = async function (event) {
     const requester = requireResident(event);
     const organizationId = sanitizeKeyFragment(getQueryParam(event, "organizationId", ""));
     const cohortId = sanitizeKeyFragment(getQueryParam(event, "cohortId", ""));
+    const includeArchived = getQueryParam(event, "includeArchived", "") === "true";
 
     if (!organizationId) {
       return withCors(jsonResponse(400, {
@@ -177,7 +178,9 @@ exports.handler = async function (event) {
       ? assignmentIndex.assignments
       : []
     )
-      .filter((assignment) => assignment.status === "active")
+      .filter((assignment) =>
+        includeArchived ? assignment.status !== "deleted" : assignment.status === "active"
+      )
       .map((assignment) => {
         const completionRows = buildCompletionRows(
           assignment,
