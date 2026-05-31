@@ -13,6 +13,7 @@ window.FacultyApp = {
   showArchivedAssignments: false,
   assignmentDashboardFilter: "active",
   editingAssignmentId: "",
+  currentFacultyAttemptDetail: null,
   latestCreatedResidentAccessCode: null,
   showHistoricalCohortAttempts: false,
 
@@ -2751,6 +2752,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.latestAllOrganizationCohorts = [];
     this.latestOrganizationAdultMembers = [];
     this.latestFacultyAssignments = [];
+    this.currentFacultyAttemptDetail = null;
     this.showArchivedAssignments = false;
     this.assignmentDashboardFilter = "active";
     this.editingAssignmentId = "";
@@ -2778,6 +2780,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
     const detailPanel = document.getElementById("facultyAttemptDetailPanel");
     const growthProfilePanel = document.getElementById("residentGrowthProfilePanel");
+
+    this.currentFacultyAttemptDetail = null;
 
     if (status) status.textContent = "Loading faculty preview...";
     if (rosterList) rosterList.innerHTML = "Loading roster...";
@@ -3532,8 +3536,10 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
 
     try {
       const data = await this.loadFacultyAttemptDetail(residentId, attemptId, facultyScope);
+      this.currentFacultyAttemptDetail = data.detail || null;
       this.renderFacultyAttemptDetail(data.detail);
     } catch (error) {
+      this.currentFacultyAttemptDetail = null;
       console.warn("[Resident Ready Faculty] Could not load faculty-safe attempt detail.", error);
       detailPanel.innerHTML = `
         <div class="diagnostic-history-empty-state">
@@ -3543,6 +3549,96 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       `;
     }
   },
+
+    renderFacultyFeedbackBox(detail = {}) {
+    return `
+      <section class="faculty-feedback-box">
+        <div>
+          <strong>Send Feedback to Resident</strong>
+          <p>
+            Write short, instructional feedback connected to this attempt. Residents will see it in their Feedback Inbox.
+          </p>
+        </div>
+
+        <label for="facultyFeedbackMessageInput">
+          Feedback
+          <textarea
+            id="facultyFeedbackMessageInput"
+            rows="4"
+            placeholder="Example: Nice improvement in prioritizing next best step questions. Before your next diagnostic, review the missed respiratory items and focus on distinguishing initial treatment from long-term management."
+          ></textarea>
+        </label>
+
+        <div class="faculty-feedback-actions">
+          <button id="sendFacultyFeedbackBtn" class="secondary" type="button">
+            Send Feedback
+          </button>
+          <span id="facultyFeedbackStatus" class="dashboard-card-note faculty-feedback-status">
+            Feedback will be linked to this attempt.
+          </span>
+        </div>
+      </section>
+    `;
+  },
+
+  async saveFacultyFeedbackFromCurrentAttempt() {
+    const textarea = document.getElementById("facultyFeedbackMessageInput");
+    const status = document.getElementById("facultyFeedbackStatus");
+    const button = document.getElementById("sendFacultyFeedbackBtn");
+    const detail = this.currentFacultyAttemptDetail;
+
+    if (!textarea || !status || !button) return;
+
+    const message = textarea.value.trim();
+
+    if (!detail) {
+      status.textContent = "Open a faculty-safe attempt review before sending feedback.";
+      status.className = "dashboard-card-note faculty-feedback-status error";
+      return;
+    }
+
+    if (!message) {
+      status.textContent = "Enter feedback before sending.";
+      status.className = "dashboard-card-note faculty-feedback-status error";
+      textarea.focus();
+      return;
+    }
+
+    if (!this.selectedOrganizationId) {
+      status.textContent = "Select an organization before sending feedback.";
+      status.className = "dashboard-card-note faculty-feedback-status error";
+      return;
+    }
+
+    status.textContent = "Sending feedback...";
+    status.className = "dashboard-card-note faculty-feedback-status";
+    button.disabled = true;
+
+    try {
+      const data = await this.apiFetch("saveFacultyFeedback", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          residentId: detail.residentId,
+          attemptId: detail.attemptId,
+          message
+        })
+      });
+
+      textarea.value = "";
+      status.textContent = data.message || "Feedback sent to resident.";
+      status.className = "dashboard-card-note faculty-feedback-status success";
+
+      console.log("[Resident Ready Faculty] Feedback saved.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not save feedback.", error);
+      status.textContent = error.message || "Could not send feedback.";
+      status.className = "dashboard-card-note faculty-feedback-status error";
+    } finally {
+      button.disabled = false;
+    }
+  },
+
 
   renderFacultyAttemptDetail(detail = {}) {
     const detailPanel = document.getElementById("facultyAttemptDetailPanel");
@@ -3646,6 +3742,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
 
     detailPanel.innerHTML = `
       ${summaryHtml}
+      ${this.renderFacultyFeedbackBox(detail)}
       <div class="history-scroll-list diagnostic-attempt-scroll-list">
         ${reviewHtml}
       </div>
@@ -3921,6 +4018,16 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         reviewBtn.dataset.facultyScope || "default"
       );
     };
+
+    const facultyAttemptDetailPanel = document.getElementById("facultyAttemptDetailPanel");
+    if (facultyAttemptDetailPanel) {
+      facultyAttemptDetailPanel.addEventListener("click", (event) => {
+        const sendFeedbackBtn = event.target.closest("#sendFacultyFeedbackBtn");
+        if (!sendFeedbackBtn) return;
+
+        this.saveFacultyFeedbackFromCurrentAttempt();
+      });
+    }
 
     const recentAttemptsList = document.getElementById("facultyRecentAttemptsList");
     if (recentAttemptsList) {

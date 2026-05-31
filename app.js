@@ -6,6 +6,7 @@ window.App = {
   googleSignInInitialized: false,
   latestResidentOrganizationMemberships: [],
   latestResidentAssignments: [],
+  latestResidentFeedback: [],
   activeAssignmentContext: null,
   showView(viewId) {
     document.querySelectorAll(".app-view").forEach((view) => {
@@ -136,6 +137,9 @@ window.App = {
     window.latestResidentReadySaveResponse = null;
 
     this.latestResidentOrganizationMemberships = [];
+    this.latestResidentAssignments = [];
+    this.latestResidentFeedback = [];
+    this.renderResidentFeedbackAlert();
   },
 
   getResidentProfile() {
@@ -418,6 +422,7 @@ window.App = {
       await this.loadResidentOrganizations();
       await this.loadResidentAttemptsFromBackend();
       await this.loadResidentAssignments();
+      await this.loadResidentFeedback();
     } catch (error) {
       console.warn("[Resident Ready] Backend resident session was not created.", error);
     }
@@ -715,6 +720,8 @@ window.App = {
   async loadResidentOrganizations() {
     if (!this.hasValidResidentBackendSession()) {
       this.latestResidentOrganizationMemberships = [];
+      this.latestResidentAssignments = [];
+      this.latestResidentFeedback = [];
       this.renderResidentInstitutionPanel();
       return [];
     }
@@ -813,6 +820,176 @@ window.App = {
       "No institution connected yet. Enter your code to join your program cohort.";
     status.className = "resident-join-status";
   },
+
+  async loadResidentFeedback() {
+    if (!this.hasValidResidentBackendSession()) {
+      this.latestResidentFeedback = [];
+      this.renderResidentFeedbackAlert();
+      this.renderResidentFeedbackInbox();
+      return [];
+    }
+
+    const data = await this.residentApiFetch("getResidentFeedback", {
+      method: "GET"
+    });
+
+    this.latestResidentFeedback = Array.isArray(data.feedback)
+      ? data.feedback
+      : [];
+
+    this.renderResidentFeedbackAlert();
+    this.renderResidentFeedbackInbox();
+
+    console.log("[Resident Ready] Loaded faculty feedback.", this.latestResidentFeedback);
+
+    return this.latestResidentFeedback;
+  },
+
+    getFeedbackSenderLabel(feedback = {}) {
+    if (feedback.createdByName) {
+      return feedback.createdByName;
+    }
+
+    if (feedback.createdByEmail) {
+      return String(feedback.createdByEmail)
+        .split("@")[0]
+        .replace(/[._-]+/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    return "Faculty";
+  },
+
+  renderResidentFeedbackAlert() {
+    const alert = document.getElementById("residentFeedbackAlert");
+    const title = document.getElementById("residentFeedbackAlertTitle");
+    const text = document.getElementById("residentFeedbackAlertText");
+
+    if (!alert || !title || !text) return;
+
+    const feedbackItems = Array.isArray(this.latestResidentFeedback)
+      ? this.latestResidentFeedback
+      : [];
+
+    if (!this.hasValidResidentBackendSession() || !feedbackItems.length) {
+      alert.classList.add("hidden");
+      return;
+    }
+
+    const latestFeedback = feedbackItems[0] || {};
+    const sender = this.getFeedbackSenderLabel(latestFeedback);
+    const count = feedbackItems.length;
+
+    title.textContent =
+      count === 1
+        ? "Faculty feedback available"
+        : `${count} faculty feedback messages`;
+
+    text.textContent =
+      count === 1
+        ? `You have feedback from ${sender}.`
+        : `You have ${count} feedback messages. Most recent: ${sender}.`;
+
+    alert.classList.remove("hidden");
+  },
+
+  scrollToResidentFeedbackInbox() {
+    const panel = document.querySelector(".resident-feedback-inbox-panel");
+
+    if (!panel) return;
+
+    panel.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  },
+
+  getFeedbackContextLabel(feedback = {}) {
+    if (feedback.assignmentTitle) {
+      return `${feedback.assignmentTitle} · ${feedback.attemptScore ?? "--"}%`;
+    }
+
+    if (feedback.attemptType) {
+      return `${feedback.attemptType} · ${feedback.attemptScore ?? "--"}%`;
+    }
+
+    return "Faculty feedback";
+  },
+
+  renderResidentFeedbackInbox() {
+    const list = document.getElementById("residentFeedbackInboxList");
+    if (!list) return;
+
+    if (!this.hasValidResidentBackendSession()) {
+      this.renderResidentFeedbackAlert();
+
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>Sign in to load feedback.</strong>
+          <p>Faculty feedback will appear here after you connect your Resident Ready account.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const feedbackItems = Array.isArray(this.latestResidentFeedback)
+      ? this.latestResidentFeedback
+      : [];
+
+    if (!feedbackItems.length) {
+      this.renderResidentFeedbackAlert();
+
+      list.innerHTML = `
+        <div class="diagnostic-history-empty-state">
+          <strong>No faculty feedback yet.</strong>
+          <p>When faculty review your work and send feedback, it will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = feedbackItems
+      .slice(0, 20)
+      .map((feedback) => `
+        <article class="resident-feedback-card">
+          <div>
+            <strong>${this.getFeedbackContextLabel(feedback)}</strong>
+            <span>
+              From ${this.getFeedbackSenderLabel(feedback)} · ${this.formatDate(feedback.createdAt)}
+            </span>
+          </div>
+
+          <p>${feedback.message || ""}</p>
+
+          ${
+            feedback.attemptId
+              ? `<button
+                  class="secondary resident-feedback-review-btn"
+                  type="button"
+                  data-attempt-id="${feedback.attemptId}"
+                >
+                  Review Related Attempt
+                </button>`
+              : ""
+          }
+        </article>
+      `)
+      .join("");
+  },
+
+  reviewFeedbackAttempt(attemptId = "") {
+    if (!attemptId) return;
+
+    const localAttempt = this.getLocalAttemptById(attemptId);
+
+    if (!localAttempt) {
+      alert("This related attempt is still loading. Refresh the page and try again.");
+      return;
+    }
+
+    this.openSavedAttemptReview(attemptId, "all");
+  },
+
 
     async loadResidentAssignments() {
     if (!this.hasValidResidentBackendSession()) {
@@ -2025,6 +2202,7 @@ init() {
     .then(() => this.loadResidentOrganizations())
     .then(() => this.loadResidentAttemptsFromBackend())
     .then(() => this.loadResidentAssignments())
+    .then(() => this.loadResidentFeedback())
     .catch((error) => {
       console.warn("[Resident Ready] Could not load backend resident data on startup.", error);
       this.renderResidentInstitutionPanel();
@@ -2037,6 +2215,25 @@ init() {
       window.ResidentTestUI.start();
     });
   }
+
+  const viewFeedbackInboxBtn = document.getElementById("viewFeedbackInboxBtn");
+  if (viewFeedbackInboxBtn) {
+    viewFeedbackInboxBtn.addEventListener("click", () => {
+      this.scrollToResidentFeedbackInbox();
+    });
+  }
+
+
+  const residentFeedbackInboxList = document.getElementById("residentFeedbackInboxList");
+  if (residentFeedbackInboxList) {
+    residentFeedbackInboxList.addEventListener("click", (event) => {
+      const reviewBtn = event.target.closest(".resident-feedback-review-btn");
+      if (!reviewBtn) return;
+
+      this.reviewFeedbackAttempt(reviewBtn.dataset.attemptId || "");
+    });
+  }
+
 
   const residentAssignedWorkList = document.getElementById("residentAssignedWorkList");
   if (residentAssignedWorkList) {

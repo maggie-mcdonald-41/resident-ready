@@ -3405,6 +3405,201 @@ body.dark-mode .resident-access-code-output strong {
 }
 
 /* =========================================================
+   FACULTY FEEDBACK / RESIDENT FEEDBACK INBOX
+   ========================================================= */
+
+.resident-feedback-alert {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.8);
+  border: 1px solid rgba(62, 92, 118, 0.18);
+  border-left: 8px solid var(--medical-red);
+  box-shadow: var(--shadow-soft);
+}
+
+.resident-feedback-alert h3,
+.resident-feedback-alert p {
+  margin: 0;
+}
+
+.resident-feedback-alert h3 {
+  color: var(--deep-space);
+}
+
+.resident-feedback-alert p {
+  color: var(--blue-slate);
+  font-weight: 800;
+}
+
+.resident-feedback-alert.hidden {
+  display: none;
+}
+
+body.dark-mode .resident-feedback-alert {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .resident-feedback-alert h3,
+body.dark-mode .resident-feedback-alert p {
+  color: var(--eggshell);
+}
+
+@media (max-width: 760px) {
+  .resident-feedback-alert {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .resident-feedback-alert button {
+    width: 100%;
+  }
+}
+
+.faculty-feedback-box {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(240, 235, 216, 0.62);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  border-left: 6px solid var(--blue-slate);
+}
+
+.faculty-feedback-box strong,
+.faculty-feedback-box p {
+  margin: 0;
+}
+
+.faculty-feedback-box label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.faculty-feedback-box textarea {
+  width: 100%;
+  min-height: 110px;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.28);
+  padding: 12px;
+  font-family: inherit;
+  font-weight: 700;
+  resize: vertical;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.faculty-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.faculty-feedback-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.faculty-feedback-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+.resident-feedback-inbox-panel {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: rgba(116, 140, 171, 0.1);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+  border-left: 8px solid var(--dusty-denim);
+}
+
+.resident-feedback-inbox-panel h3,
+.resident-feedback-inbox-panel p {
+  margin: 0;
+}
+
+.resident-feedback-inbox-list {
+  display: grid;
+  gap: 10px;
+}
+
+.resident-feedback-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.resident-feedback-card strong,
+.resident-feedback-card span {
+  display: block;
+}
+
+.resident-feedback-card span {
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.resident-feedback-card p {
+  margin: 0;
+  color: var(--deep-space);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.resident-feedback-card button {
+  justify-self: start;
+}
+
+body.dark-mode .faculty-feedback-box,
+body.dark-mode .resident-feedback-inbox-panel,
+body.dark-mode .resident-feedback-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .faculty-feedback-box label,
+body.dark-mode .resident-feedback-card span,
+body.dark-mode .resident-feedback-card p {
+  color: var(--eggshell);
+}
+
+body.dark-mode .faculty-feedback-box textarea {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 760px) {
+  .faculty-feedback-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .faculty-feedback-actions button,
+  .resident-feedback-card button {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
    RESIDENT ASSIGNED WORK
    ========================================================= */
 
