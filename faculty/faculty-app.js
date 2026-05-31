@@ -11,6 +11,7 @@ window.FacultyApp = {
   latestFacultyIndexData: null,
   latestFacultyAssignments: [],
   showArchivedAssignments: false,
+  editingAssignmentId: "",
   latestCreatedResidentAccessCode: null,
   showHistoricalCohortAttempts: false,
 
@@ -1000,6 +1001,7 @@ window.FacultyApp = {
         })
       });
 
+      this.editingAssignmentId = "";
       await this.refreshFacultyAssignmentsPanel();
 
       status.textContent = data.message || "Assignment updated.";
@@ -1026,10 +1028,23 @@ window.FacultyApp = {
 
     return rows
       .map((row) => {
-        const completed = row.status === "completed";
+        const completed =
+          row.status === "completed" || row.status === "completed_late";
+
+        const statusLabels = {
+          completed: "Completed",
+          completed_late: "Completed Late",
+          past_due: "Past Due",
+          not_started: "Not Started"
+        };
+
+        const statusLabel = statusLabels[row.status] || "Not Started";
+
         const scoreClass = completed
           ? this.getScoreClass(row.percentCorrect)
-          : "growth-steady";
+          : row.status === "past_due"
+            ? "growth-needs-attention"
+            : "growth-steady";
 
         return `
           <div class="assignment-completion-row">
@@ -1040,13 +1055,15 @@ window.FacultyApp = {
 
             <div>
               <strong class="${scoreClass}">
-                ${completed ? `${row.percentCorrect ?? "--"}%` : "Not Started"}
+                ${completed ? `${row.percentCorrect ?? "--"}%` : statusLabel}
               </strong>
               <span>
                 ${
                   completed
-                    ? `${row.correctCount ?? "--"}/${row.totalQuestions ?? "--"} correct · ${this.formatDate(row.completedAt)}`
-                    : "No submitted attempt yet"
+                    ? `${row.correctCount ?? "--"}/${row.totalQuestions ?? "--"} correct · ${statusLabel} ${this.formatDate(row.completedAt)}`
+                    : row.status === "past_due"
+                      ? "Past due · No submitted attempt yet"
+                      : "No submitted attempt yet"
                 }
               </span>
             </div>
@@ -1062,8 +1079,9 @@ window.FacultyApp = {
                   >
                     Review
                   </button>`
-                : `<span class="assignment-status-pill">Waiting</span>`
-            }
+                : `<span class="assignment-status-pill ${row.status === "past_due" ? "past-due" : ""}">
+                    ${row.status === "past_due" ? "Past Due" : "Waiting"}
+                  </span>`            }
           </div>
         `;
       })
@@ -1134,6 +1152,7 @@ window.FacultyApp = {
             ? "--%"
             : `${completion.averageScore}%`;
           const isArchived = assignment.status === "archived";
+          const isEditing = this.editingAssignmentId === assignment.assignmentId;
 
           return `
             <article class="faculty-assignment-card ${isArchived ? "is-archived" : ""}">
@@ -1165,63 +1184,81 @@ window.FacultyApp = {
                     <span>Waiting</span>
                     <strong>${completion.notStartedCount || 0}</strong>
                   </div>
+                  <div>
+                    <span>Late/Past Due</span>
+                    <strong>${(completion.lateCount || 0) + (completion.pastDueCount || 0)}</strong>
+                  </div>
                 </div>
               </div>
 
               ${
                 isArchived
                   ? `<p class="dashboard-card-note">This assignment is archived and hidden from resident Assigned Work.</p>`
-                  : `<div class="assignment-manage-box">
-                      <label>
-                        Title
-                        <input
-                          class="assignment-manage-field"
-                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
-                          data-field="title"
-                          type="text"
-                          value="${this.escapeAttribute(assignment.title || "")}"
-                        />
-                      </label>
+                  : `<div class="assignment-card-actions-row">
+                      <button
+                        class="secondary edit-assignment-btn"
+                        type="button"
+                        data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                      >
+                        ${isEditing ? "Close Edit" : "Edit Assignment"}
+                      </button>
+                    </div>
 
-                      <label>
-                        Due Date
-                        <input
-                          class="assignment-manage-field"
-                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
-                          data-field="dueDate"
-                          type="date"
-                          value="${this.escapeAttribute(assignment.dueDate || "")}"
-                        />
-                      </label>
+                    ${
+                      isEditing
+                        ? `<div class="assignment-manage-box">
+                            <label>
+                              Title
+                              <input
+                                class="assignment-manage-field"
+                                data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                                data-field="title"
+                                type="text"
+                                value="${this.escapeAttribute(assignment.title || "")}"
+                              />
+                            </label>
 
-                      <label class="assignment-manage-instructions-label">
-                        Instructions
-                        <textarea
-                          class="assignment-manage-field"
-                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
-                          data-field="instructions"
-                          rows="2"
-                        >${this.escapeHtml(assignment.instructions || "")}</textarea>
-                      </label>
+                            <label>
+                              Due Date
+                              <input
+                                class="assignment-manage-field"
+                                data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                                data-field="dueDate"
+                                type="date"
+                                value="${this.escapeAttribute(assignment.dueDate || "")}"
+                              />
+                            </label>
 
-                      <div class="assignment-manage-actions">
-                        <button
-                          class="secondary update-assignment-btn"
-                          type="button"
-                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
-                        >
-                          Save Changes
-                        </button>
+                            <label class="assignment-manage-instructions-label">
+                              Instructions
+                              <textarea
+                                class="assignment-manage-field"
+                                data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                                data-field="instructions"
+                                rows="2"
+                              >${this.escapeHtml(assignment.instructions || "")}</textarea>
+                            </label>
 
-                        <button
-                          class="secondary archive-assignment-btn danger-action"
-                          type="button"
-                          data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
-                        >
-                          Archive
-                        </button>
-                      </div>
-                    </div>`
+                            <div class="assignment-manage-actions">
+                              <button
+                                class="secondary update-assignment-btn"
+                                type="button"
+                                data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                              >
+                                Save Changes
+                              </button>
+
+                              <button
+                                class="secondary archive-assignment-btn danger-action"
+                                type="button"
+                                data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                              >
+                                Archive
+                              </button>
+                            </div>
+                          </div>`
+                        : ""
+                    }`
               }
 
               <div class="assignment-completion-list">
@@ -3686,12 +3723,21 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     if (facultyAssignmentsList) {
       facultyAssignmentsList.addEventListener("click", (event) => {
         const toggleArchivedBtn = event.target.closest("#toggleArchivedAssignmentsBtn");
+        const editAssignmentBtn = event.target.closest(".edit-assignment-btn");
         const updateAssignmentBtn = event.target.closest(".update-assignment-btn");
         const archiveAssignmentBtn = event.target.closest(".archive-assignment-btn");
         const reviewBtn = event.target.closest(".faculty-review-attempt-btn");
 
         if (toggleArchivedBtn) {
           this.showArchivedAssignments = !this.showArchivedAssignments;
+          this.renderFacultyAssignmentsDashboard();
+          return;
+        }
+
+        if (editAssignmentBtn) {
+          const assignmentId = editAssignmentBtn.dataset.assignmentId || "";
+          this.editingAssignmentId =
+            this.editingAssignmentId === assignmentId ? "" : assignmentId;
           this.renderFacultyAssignmentsDashboard();
           return;
         }

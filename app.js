@@ -417,6 +417,7 @@ window.App = {
       await this.loadResidentProfileFromBackend();
       await this.loadResidentOrganizations();
       await this.loadResidentAttemptsFromBackend();
+      await this.loadResidentAssignments();
     } catch (error) {
       console.warn("[Resident Ready] Backend resident session was not created.", error);
     }
@@ -644,9 +645,9 @@ window.App = {
 
     this.renderCloudSaveState("Cloud save connected. Profile and attempts are saving to Resident Ready.");
 
-    console.log("[Resident Ready] Loaded resident attempts from backend.", mergedAttempts.length);
+    console.log("[Resident Ready] Loaded resident attempts from backend.", backendAttempts.length);
 
-    return mergedAttempts;
+    return backendAttempts;
   },
 
   async saveResidentAttemptToBackend(record) {
@@ -835,6 +836,144 @@ window.App = {
     return this.latestResidentAssignments;
   },
 
+  getAssignmentCompletion(assignment = {}) {
+    return assignment.latestAttempt || null;
+  },
+
+  getDueDateEndOfDay(value = "") {
+    if (!value) return null;
+
+    const parts = String(value).split("-").map(Number);
+
+    if (parts.length === 3 && parts.every(Number.isFinite)) {
+      const [year, month, day] = parts;
+      return new Date(year, month - 1, day, 23, 59, 59, 999);
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+
+    date.setHours(23, 59, 59, 999);
+    return date;
+  },
+
+  getAssignmentComputedStatus(assignment = {}) {
+    const completion = this.getAssignmentCompletion(assignment);
+    const dueEnd = this.getDueDateEndOfDay(assignment.dueDate);
+    const now = new Date();
+
+    if (completion) {
+      const completedAt = new Date(completion.savedAt || 0);
+
+      if (
+        dueEnd &&
+        !Number.isNaN(completedAt.getTime()) &&
+        completedAt.getTime() > dueEnd.getTime()
+      ) {
+        return "completed_late";
+      }
+
+      return "completed";
+    }
+
+    if (!dueEnd) {
+      return assignment.completionStatus || "not_started";
+    }
+
+    const msUntilDue = dueEnd.getTime() - now.getTime();
+    const daysUntilDue = Math.ceil(msUntilDue / (1000 * 60 * 60 * 24));
+
+    if (msUntilDue < 0) {
+      return "past_due";
+    }
+
+    if (daysUntilDue <= 1) {
+      return "due_today";
+    }
+
+    if (daysUntilDue <= 3) {
+      return "due_soon";
+    }
+
+    return assignment.completionStatus || "not_started";
+  },
+
+  getAssignmentStatusLabel(assignment = {}) {
+    const status = this.getAssignmentComputedStatus(assignment);
+
+    const labels = {
+      completed: "Completed",
+      completed_late: "Completed Late",
+      past_due: "Past Due",
+      due_today: "Due Today",
+      due_soon: "Due Soon",
+      not_started: "Not Started"
+    };
+
+    return labels[status] || "Not Started";
+  },
+
+  getAssignmentStatusClass(assignment = {}) {
+    const status = this.getAssignmentComputedStatus(assignment);
+
+    const classes = {
+      completed: "assignment-completed",
+      completed_late: "assignment-completed-late",
+      past_due: "assignment-past-due",
+      due_today: "assignment-due-today",
+      due_soon: "assignment-due-soon",
+      not_started: "assignment-not-started"
+    };
+
+    return classes[status] || "assignment-not-started";
+  },
+
+  getAssignmentDueMessage(assignment = {}) {
+    const status = this.getAssignmentComputedStatus(assignment);
+
+    if (status === "past_due") {
+      return "This assignment is past due. You can still complete it.";
+    }
+
+    if (status === "due_today") {
+      return "This assignment is due today.";
+    }
+
+    if (status === "due_soon") {
+      return `This assignment is due soon: ${this.formatAssignmentDueDate(assignment.dueDate)}.`;
+    }
+
+    return "Complete this diagnostic when you are ready.";
+  },
+
+  getLocalAttemptById(attemptId = "") {
+    const memory = this.getResidentMemory();
+    return (memory.attempts || []).find((attempt) => attempt.id === attemptId) || null;
+  },
+
+  reviewAssignmentResults(assignmentId = "") {
+    const assignment = this.latestResidentAssignments.find(
+      (item) => item.assignmentId === assignmentId
+    );
+
+    const latestAttemptId = assignment?.latestAttempt?.attemptId;
+
+    if (!latestAttemptId) {
+      alert("No completed attempt is available for this assignment yet.");
+      return;
+    }
+
+    const localAttempt = this.getLocalAttemptById(latestAttemptId);
+
+    if (!localAttempt) {
+      alert("This completed attempt is still loading. Refresh the page and try again.");
+      return;
+    }
+
+    this.openSavedAttemptReview(latestAttemptId, "all");
+  },
+
+
   formatAssignmentDueDate(value) {
     if (!value) return "No due date";
 
@@ -889,27 +1028,62 @@ window.App = {
     }
 
     list.innerHTML = assignments
-      .map((assignment) => `
-        <div class="resident-assignment-card">
-          <div>
-            <strong>${assignment.title || "Assigned Diagnostic"}</strong>
-            <span>${assignment.cohortLabel || assignment.cohortId || "Cohort"} · Due ${this.formatAssignmentDueDate(assignment.dueDate)}</span>
-            ${
-              assignment.instructions
-                ? `<p>${assignment.instructions}</p>`
-                : ""
-            }
-          </div>
+      .map((assignment) => {
+        const completion = this.getAssignmentCompletion(assignment);
+        const isCompleted = !!completion;
 
-          <button
-            class="secondary start-assignment-btn"
-            type="button"
-            data-assignment-id="${assignment.assignmentId}"
-          >
-            Start Diagnostic
-          </button>
-        </div>
-      `)
+        return `
+          <div class="resident-assignment-card ${this.getAssignmentStatusClass(assignment)}">
+            <div>
+              <strong>${assignment.title || "Assigned Diagnostic"}</strong>
+              <span>${assignment.cohortLabel || assignment.cohortId || "Cohort"} · Due ${this.formatAssignmentDueDate(assignment.dueDate)}</span>
+              ${
+                assignment.instructions
+                  ? `<p>${assignment.instructions}</p>`
+                  : ""
+              }
+
+              <div class="resident-assignment-status-row">
+                <span class="resident-assignment-status-pill ${this.getAssignmentStatusClass(assignment)}">
+                  ${this.getAssignmentStatusLabel(assignment)}
+                </span>
+
+                ${
+                  isCompleted
+                    ? `<span class="resident-assignment-completion-summary">
+                        ${completion.percentCorrect ?? "--"}% · ${completion.correctCount ?? "--"}/${completion.totalQuestions ?? "--"} correct · ${this.getAssignmentStatusLabel(assignment)} ${this.formatDate(completion.savedAt)}
+                      </span>`
+                    : `<span class="resident-assignment-completion-summary">
+                        ${this.getAssignmentDueMessage(assignment)}
+                      </span>`
+                }
+              </div>
+            </div>
+
+            <div class="resident-assignment-actions">
+              ${
+                isCompleted
+                  ? `<button
+                      class="secondary review-assignment-results-btn"
+                      type="button"
+                      data-assignment-id="${assignment.assignmentId}"
+                    >
+                      Review Results
+                    </button>`
+                  : ""
+              }
+
+              <button
+                class="secondary start-assignment-btn"
+                type="button"
+                data-assignment-id="${assignment.assignmentId}"
+              >
+                ${isCompleted ? "Retake Diagnostic" : "Start Diagnostic"}
+              </button>
+            </div>
+          </div>
+        `;
+      })
       .join("");
   },
 
@@ -1224,9 +1398,11 @@ window.App = {
     this.activeAssignmentContext = null;
 
     if (this.hasValidResidentBackendSession()) {
-      this.saveResidentAttemptToBackend(record).catch((error) => {
-        console.warn("[Resident Ready] Could not save resident attempt to backend.", error);
-      });
+      this.saveResidentAttemptToBackend(record)
+        .then(() => this.loadResidentAssignments())
+        .catch((error) => {
+          console.warn("[Resident Ready] Could not save resident attempt to backend.", error);
+        });
     }
   },
 
@@ -1811,8 +1987,8 @@ init() {
 
   this.loadResidentProfileFromBackend()
     .then(() => this.loadResidentOrganizations())
-    .then(() => this.loadResidentAssignments())
     .then(() => this.loadResidentAttemptsFromBackend())
+    .then(() => this.loadResidentAssignments())
     .catch((error) => {
       console.warn("[Resident Ready] Could not load backend resident data on startup.", error);
       this.renderResidentInstitutionPanel();
@@ -1829,10 +2005,17 @@ init() {
   const residentAssignedWorkList = document.getElementById("residentAssignedWorkList");
   if (residentAssignedWorkList) {
     residentAssignedWorkList.addEventListener("click", (event) => {
+      const reviewAssignmentBtn = event.target.closest(".review-assignment-results-btn");
       const startAssignmentBtn = event.target.closest(".start-assignment-btn");
-      if (!startAssignmentBtn) return;
 
-      this.startAssignedDiagnostic(startAssignmentBtn.dataset.assignmentId || "");
+      if (reviewAssignmentBtn) {
+        this.reviewAssignmentResults(reviewAssignmentBtn.dataset.assignmentId || "");
+        return;
+      }
+
+      if (startAssignmentBtn) {
+        this.startAssignedDiagnostic(startAssignmentBtn.dataset.assignmentId || "");
+      }
     });
   }
 

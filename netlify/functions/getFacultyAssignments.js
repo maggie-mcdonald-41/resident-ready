@@ -35,6 +35,48 @@ function getLatestAttemptByResidentForAssignment(attempts = [], assignmentId = "
   return latestByResident;
 }
 
+function getDueDateEndOfDay(value = "") {
+  if (!value) return null;
+
+  const parts = String(value).split("-").map(Number);
+
+  if (parts.length === 3 && parts.every(Number.isFinite)) {
+    const [year, month, day] = parts;
+    return new Date(year, month - 1, day, 23, 59, 59, 999);
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function getAssignmentRowStatus(assignment = {}, attempt = null) {
+  const dueEnd = getDueDateEndOfDay(assignment.dueDate);
+  const now = new Date();
+
+  if (!attempt) {
+    if (dueEnd && now.getTime() > dueEnd.getTime()) {
+      return "past_due";
+    }
+
+    return "not_started";
+  }
+
+  const completedAt = new Date(attempt.savedAt || 0);
+
+  if (
+    dueEnd &&
+    !Number.isNaN(completedAt.getTime()) &&
+    completedAt.getTime() > dueEnd.getTime()
+  ) {
+    return "completed_late";
+  }
+
+  return "completed";
+}
+
 function buildCompletionRows(assignment = {}, rosterResidents = [], recentAttempts = []) {
   const latestByResident = getLatestAttemptByResidentForAssignment(
     recentAttempts,
@@ -77,7 +119,7 @@ function buildCompletionRows(assignment = {}, rosterResidents = [], recentAttemp
         resident.residentEmail ||
         attempt?.residentEmail ||
         "No email",
-      status: attempt ? "completed" : "not_started",
+      status: getAssignmentRowStatus(assignment, attempt),
       percentCorrect: attempt?.percentCorrect ?? null,
       correctCount: attempt?.correctCount ?? null,
       totalQuestions: attempt?.totalQuestions ?? null,
@@ -95,7 +137,13 @@ function buildCompletionRows(assignment = {}, rosterResidents = [], recentAttemp
 }
 
 function summarizeCompletion(rows = []) {
-  const completedRows = rows.filter((row) => row.status === "completed");
+  const completedRows = rows.filter((row) =>
+    row.status === "completed" || row.status === "completed_late"
+  );
+
+  const lateRows = rows.filter((row) => row.status === "completed_late");
+  const pastDueRows = rows.filter((row) => row.status === "past_due");
+
   const scores = completedRows
     .map((row) => Number(row.percentCorrect))
     .filter((score) => Number.isFinite(score));
@@ -103,7 +151,9 @@ function summarizeCompletion(rows = []) {
   return {
     assignedCount: rows.length,
     completedCount: completedRows.length,
-    notStartedCount: rows.length - completedRows.length,
+    notStartedCount: rows.filter((row) => row.status === "not_started").length,
+    pastDueCount: pastDueRows.length,
+    lateCount: lateRows.length,
     averageScore: scores.length
       ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
       : null
