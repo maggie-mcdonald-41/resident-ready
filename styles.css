@@ -2915,6 +2915,13 @@ body.dark-mode .faculty-promote-cohort-actions select {
   border: 1px solid rgba(62, 92, 118, 0.18);
 }
 
+.faculty-assignment-dashboard-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
 .faculty-assignment-dashboard-header strong {
   display: block;
   color: var(--deep-space);
@@ -2925,6 +2932,29 @@ body.dark-mode .faculty-promote-cohort-actions select {
   margin: 0;
   color: var(--blue-slate);
   font-weight: 700;
+}
+
+.assignment-dashboard-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.assignment-filter-btn {
+  border: 2px solid rgba(62, 92, 118, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--blue-slate);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.assignment-filter-btn.active {
+  background: var(--deep-space);
+  color: var(--eggshell);
+  border-color: var(--deep-space);
 }
 
 .faculty-assignments-list {
@@ -3110,6 +3140,8 @@ body.dark-mode .assignment-manage-box textarea {
 
 .assignment-card-actions-row {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-start;
 }
 
@@ -3133,6 +3165,7 @@ body.dark-mode .assignment-status-pill {
 }
 
 @media (max-width: 950px) {
+  .faculty-assignment-dashboard-header,
   .faculty-assignment-card-header,
   .faculty-assignment-metrics,
   .assignment-manage-box,
@@ -3156,6 +3189,25 @@ body.dark-mode .assignment-status-pill {
     justify-self: stretch;
     text-align: center;
   }
+    .assignment-dashboard-filter-row {
+    justify-content: stretch;
+  }
+
+  .assignment-filter-btn {
+    flex: 1 1 140px;
+  }
+}
+
+body.dark-mode .assignment-filter-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark-mode .assignment-filter-btn.active {
+  background: var(--eggshell);
+  color: var(--ink-black);
+  border-color: var(--eggshell);
 }
 
 .assignment-status {
@@ -3393,7 +3445,8 @@ body.dark-mode .resident-access-code-output strong {
 }
 
 .resident-assignment-card.assignment-completed-late {
-  border-left: 6px solid var(--warning, #b7791f);
+  border-left: 6px solid #3f8f5f;
+  box-shadow: inset 4px 0 0 rgba(183, 121, 31, 0.45);
 }
 
 .resident-assignment-card.assignment-past-due {
@@ -3405,7 +3458,7 @@ body.dark-mode .resident-access-code-output strong {
 }
 
 .resident-assignment-card.assignment-due-soon {
-  border-left: 6px solid var(--warning, #b7791f);
+  border-left: 6px solid #d9902f;
 }
 
 .resident-assignment-card.assignment-not-started {
@@ -3454,8 +3507,9 @@ body.dark-mode .resident-access-code-output strong {
 }
 
 .resident-assignment-status-pill.assignment-completed-late {
-  background: rgba(183, 121, 31, 0.14);
-  color: var(--warning, #b7791f);
+  background: rgba(63, 143, 95, 0.14);
+  color: #2f6f49;
+  border: 1px solid rgba(183, 121, 31, 0.45);
 }
 
 .resident-assignment-status-pill.assignment-past-due,
@@ -3465,8 +3519,8 @@ body.dark-mode .resident-access-code-output strong {
 }
 
 .resident-assignment-status-pill.assignment-due-soon {
-  background: rgba(183, 121, 31, 0.14);
-  color: var(--warning, #b7791f);
+  background: rgba(217, 144, 47, 0.16);
+  color: #9a5d11;
 }
 
 .resident-assignment-status-pill.assignment-not-started {

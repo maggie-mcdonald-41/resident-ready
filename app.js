@@ -946,6 +946,40 @@ window.App = {
     return "Complete this diagnostic when you are ready.";
   },
 
+  getAssignmentSortPriority(assignment = {}) {
+    const status = this.getAssignmentComputedStatus(assignment);
+
+    const priorities = {
+      past_due: 1,
+      due_today: 2,
+      due_soon: 3,
+      not_started: 4,
+      completed_late: 5,
+      completed: 6
+    };
+
+    return priorities[status] || 7;
+  },
+
+  getAssignmentDueTime(assignment = {}) {
+    const dueEnd = this.getDueDateEndOfDay(assignment.dueDate);
+    return dueEnd ? dueEnd.getTime() : Number.MAX_SAFE_INTEGER;
+  },
+
+  sortResidentAssignments(assignments = []) {
+    return [...assignments].sort((a, b) => {
+      const priorityCompare =
+        this.getAssignmentSortPriority(a) - this.getAssignmentSortPriority(b);
+
+      if (priorityCompare !== 0) return priorityCompare;
+
+      const dueCompare = this.getAssignmentDueTime(a) - this.getAssignmentDueTime(b);
+      if (dueCompare !== 0) return dueCompare;
+
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  },
+
   getLocalAttemptById(attemptId = "") {
     const memory = this.getResidentMemory();
     return (memory.attempts || []).find((attempt) => attempt.id === attemptId) || null;
@@ -1013,9 +1047,11 @@ window.App = {
       return;
     }
 
-    const assignments = Array.isArray(this.latestResidentAssignments)
-      ? this.latestResidentAssignments
-      : [];
+    const assignments = this.sortResidentAssignments(
+      Array.isArray(this.latestResidentAssignments)
+        ? this.latestResidentAssignments
+        : []
+    );
 
     if (!assignments.length) {
       list.innerHTML = `

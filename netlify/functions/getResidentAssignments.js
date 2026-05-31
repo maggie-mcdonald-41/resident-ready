@@ -134,6 +134,16 @@ exports.handler = async function (event) {
     }
 
     const assignmentStore = getStore("resident-ready-assignments");
+    const attemptIndexStore = getStore("resident-ready-attempt-indexes");
+
+    const attemptIndex = await attemptIndexStore.get(
+      `resident/${resident.residentId}/index.json`,
+      { type: "json" }
+    );
+
+    const residentAttemptSummaries = Array.isArray(attemptIndex?.attempts)
+      ? attemptIndex.attempts
+      : [];
 
     const allAssignments = [];
 
@@ -150,7 +160,7 @@ exports.handler = async function (event) {
 
       visibleAssignments.forEach((assignment) => {
         allAssignments.push({
-          ...assignment,
+          ...decorateAssignmentWithCompletion(assignment, residentAttemptSummaries),
           residentMembership: {
             organizationId: membership.organizationId,
             organizationName: membership.organizationName,

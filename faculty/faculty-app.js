@@ -11,6 +11,7 @@ window.FacultyApp = {
   latestFacultyIndexData: null,
   latestFacultyAssignments: [],
   showArchivedAssignments: false,
+  assignmentDashboardFilter: "active",
   editingAssignmentId: "",
   latestCreatedResidentAccessCode: null,
   showHistoricalCohortAttempts: false,
@@ -1015,6 +1016,86 @@ window.FacultyApp = {
     }
   },
 
+  assignmentNeedsAttention(assignment = {}) {
+    const completion = assignment.completion || {};
+    return (completion.lateCount || 0) + (completion.pastDueCount || 0) > 0;
+  },
+
+  getFacultyAssignmentDueTime(assignment = {}) {
+    if (!assignment.dueDate) return Number.MAX_SAFE_INTEGER;
+
+    const date = new Date(assignment.dueDate);
+    return Number.isNaN(date.getTime()) ? Number.MAX_SAFE_INTEGER : date.getTime();
+  },
+
+  getFacultyAssignmentSortPriority(assignment = {}) {
+    if (assignment.status === "archived") return 5;
+
+    if (this.assignmentNeedsAttention(assignment)) return 1;
+
+    const dueDate = new Date(assignment.dueDate || "");
+    if (!Number.isNaN(dueDate.getTime())) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const dueDay = new Date(dueDate);
+      dueDay.setHours(0, 0, 0, 0);
+
+      const dayDiff = Math.round(
+        (dueDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (dayDiff <= 0) return 2;
+      if (dayDiff <= 3) return 3;
+    }
+
+    return 4;
+  },
+
+  sortFacultyAssignments(assignments = []) {
+    return [...assignments].sort((a, b) => {
+      const priorityCompare =
+        this.getFacultyAssignmentSortPriority(a) - this.getFacultyAssignmentSortPriority(b);
+
+      if (priorityCompare !== 0) return priorityCompare;
+
+      const dueCompare =
+        this.getFacultyAssignmentDueTime(a) - this.getFacultyAssignmentDueTime(b);
+
+      if (dueCompare !== 0) return dueCompare;
+
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  },
+
+  filterFacultyAssignments(assignments = []) {
+    if (this.assignmentDashboardFilter === "all") {
+      return assignments;
+    }
+
+    if (this.assignmentDashboardFilter === "archived") {
+      return assignments.filter((assignment) => assignment.status === "archived");
+    }
+
+    if (this.assignmentDashboardFilter === "needs_attention") {
+      return assignments.filter((assignment) =>
+        assignment.status !== "archived" && this.assignmentNeedsAttention(assignment)
+      );
+    }
+
+    return assignments.filter((assignment) => assignment.status !== "archived");
+  },
+
+  renderAssignmentFilterControls() {
+    const buttons = document.querySelectorAll(".assignment-filter-btn");
+
+    buttons.forEach((button) => {
+      const isActive = button.dataset.assignmentFilter === this.assignmentDashboardFilter;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  },
+
 
   renderAssignmentCompletionRows(rows = []) {
     if (!rows.length) {
@@ -1096,6 +1177,8 @@ window.FacultyApp = {
       ? this.latestFacultyAssignments
       : [];
 
+    this.renderAssignmentFilterControls();
+
     const activeAssignments = allAssignments.filter((assignment) =>
       assignment.status !== "archived"
     );
@@ -1104,9 +1187,9 @@ window.FacultyApp = {
       assignment.status === "archived"
     );
 
-    const assignments = this.showArchivedAssignments
-      ? allAssignments
-      : activeAssignments;
+    const assignments = this.sortFacultyAssignments(
+      this.filterFacultyAssignments(allAssignments)
+    );
 
     if (!this.selectedOrganizationId) {
       list.innerHTML = `
@@ -1119,32 +1202,37 @@ window.FacultyApp = {
     }
 
     if (!assignments.length) {
+      const emptyMessages = {
+        active: {
+          title: "No active assignments yet.",
+          body: "Create a diagnostic assignment above. Completion tracking will appear here after residents submit work."
+        },
+        needs_attention: {
+          title: "No assignments need attention.",
+          body: "Assignments with late submissions or past-due residents will appear here."
+        },
+        archived: {
+          title: "No archived assignments yet.",
+          body: "Archived assignments will appear here after you archive them."
+        },
+        all: {
+          title: "No assignments yet.",
+          body: "Create a diagnostic assignment above to begin tracking completion."
+        }
+      };
+
+      const message = emptyMessages[this.assignmentDashboardFilter] || emptyMessages.active;
+
       list.innerHTML = `
         <div class="diagnostic-history-empty-state">
-          <strong>No active assignments yet.</strong>
-          <p>Create a diagnostic assignment above. Completion tracking will appear here after residents submit work.</p>
-          ${
-            archivedAssignments.length
-              ? `<button id="toggleArchivedAssignmentsBtn" class="secondary" type="button">Show archived assignments</button>`
-              : ""
-          }
+          <strong>${message.title}</strong>
+          <p>${message.body}</p>
         </div>
       `;
       return;
     }
 
-    const archivedToggleHtml = archivedAssignments.length
-      ? `
-        <div class="archived-assignments-toggle-row">
-          <button id="toggleArchivedAssignmentsBtn" class="secondary" type="button">
-            ${this.showArchivedAssignments ? "Hide" : "Show"} ${archivedAssignments.length} archived assignment${archivedAssignments.length === 1 ? "" : "s"}
-          </button>
-        </div>
-      `
-      : "";
-
     list.innerHTML = `
-      ${archivedToggleHtml}
       ${assignments
         .map((assignment) => {
           const completion = assignment.completion || {};
@@ -1202,6 +1290,14 @@ window.FacultyApp = {
                       >
                         ${isEditing ? "Close Edit" : "Edit Assignment"}
                       </button>
+
+                      <button
+                        class="secondary archive-assignment-btn danger-action"
+                        type="button"
+                        data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
+                      >
+                        Archive
+                      </button>
                     </div>
 
                     ${
@@ -1248,13 +1344,7 @@ window.FacultyApp = {
                                 Save Changes
                               </button>
 
-                              <button
-                                class="secondary archive-assignment-btn danger-action"
-                                type="button"
-                                data-assignment-id="${this.escapeAttribute(assignment.assignmentId)}"
-                              >
-                                Archive
-                              </button>
+
                             </div>
                           </div>`
                         : ""
@@ -2662,6 +2752,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.latestOrganizationAdultMembers = [];
     this.latestFacultyAssignments = [];
     this.showArchivedAssignments = false;
+    this.assignmentDashboardFilter = "active";
+    this.editingAssignmentId = "";
     this.latestCreatedResidentAccessCode = null;
     this.selectedOrganizationId = "";
 
@@ -3584,6 +3676,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         this.selectedCohortId = "all";
         this.showHistoricalCohortAttempts = false;
         this.showArchivedAssignments = false;
+        this.assignmentDashboardFilter = "active";
+        this.editingAssignmentId = "";
         this.latestCreatedResidentAccessCode = null;
         this.renderCreatedResidentAccessCode(null);
         this.renderRoleBasedControls();
@@ -3605,6 +3699,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         this.selectedCohortId = event.target.value || "all";
         this.showHistoricalCohortAttempts = false;
         this.showArchivedAssignments = false;
+        this.assignmentDashboardFilter = "active";
+        this.editingAssignmentId = "";
         this.renderFacultyPreview();
       });
     }
@@ -3719,20 +3815,23 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       });
     }
 
+    document.querySelectorAll(".assignment-filter-btn").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        this.assignmentDashboardFilter =
+          event.currentTarget.dataset.assignmentFilter || "active";
+        this.editingAssignmentId = "";
+        this.renderFacultyAssignmentsDashboard();
+      });
+    });
+
+
     const facultyAssignmentsList = document.getElementById("facultyAssignmentsList");
     if (facultyAssignmentsList) {
       facultyAssignmentsList.addEventListener("click", (event) => {
-        const toggleArchivedBtn = event.target.closest("#toggleArchivedAssignmentsBtn");
         const editAssignmentBtn = event.target.closest(".edit-assignment-btn");
         const updateAssignmentBtn = event.target.closest(".update-assignment-btn");
         const archiveAssignmentBtn = event.target.closest(".archive-assignment-btn");
         const reviewBtn = event.target.closest(".faculty-review-attempt-btn");
-
-        if (toggleArchivedBtn) {
-          this.showArchivedAssignments = !this.showArchivedAssignments;
-          this.renderFacultyAssignmentsDashboard();
-          return;
-        }
 
         if (editAssignmentBtn) {
           const assignmentId = editAssignmentBtn.dataset.assignmentId || "";

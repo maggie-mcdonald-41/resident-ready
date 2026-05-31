@@ -350,10 +350,27 @@
 
           <div class="faculty-assignment-dashboard-box">
             <div class="faculty-assignment-dashboard-header">
-              <strong>Assignment Dashboard</strong>
-              <p>
-                Track completion for assignments in the selected organization and cohort.
-              </p>
+              <div>
+                <strong>Assignment Dashboard</strong>
+                <p>
+                  Track completion for assignments in the selected organization and cohort.
+                </p>
+              </div>
+
+              <div class="assignment-dashboard-filter-row" role="group" aria-label="Assignment dashboard filter">
+                <button class="assignment-filter-btn active" type="button" data-assignment-filter="active">
+                  Active
+                </button>
+                <button class="assignment-filter-btn" type="button" data-assignment-filter="needs_attention">
+                  Needs Attention
+                </button>
+                <button class="assignment-filter-btn" type="button" data-assignment-filter="archived">
+                  Archived
+                </button>
+                <button class="assignment-filter-btn" type="button" data-assignment-filter="all">
+                  All
+                </button>
+              </div>
             </div>
 
             <div id="facultyAssignmentsList" class="faculty-assignments-list">
