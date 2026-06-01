@@ -14,6 +14,8 @@ window.FacultyApp = {
   assignmentDashboardFilter: "active",
   editingAssignmentId: "",
   currentFacultyAttemptDetail: null,
+  currentFacultyAttemptFeedback: [],
+  currentResidentProfileFeedback: [],
   latestCreatedResidentAccessCode: null,
   showHistoricalCohortAttempts: false,
 
@@ -2782,6 +2784,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     const growthProfilePanel = document.getElementById("residentGrowthProfilePanel");
 
     this.currentFacultyAttemptDetail = null;
+    this.currentFacultyAttemptFeedback = [];
+    this.currentResidentProfileFeedback = [];
 
     if (status) status.textContent = "Loading faculty preview...";
     if (rosterList) rosterList.innerHTML = "Loading roster...";
@@ -3219,11 +3223,23 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
           : ""
       }
 
+      <div class="resident-growth-feedback-history">
+        <h4>Faculty Feedback History</h4>
+        <p class="dashboard-card-note">
+          Feedback sent to this resident appears here so faculty can see prior guidance.
+        </p>
+        <div id="residentGrowthFeedbackHistoryList" class="faculty-feedback-history-list">
+          Loading feedback history...
+        </div>
+      </div>
+
       <div class="resident-growth-recent-attempts">
         <h4>This Resident’s Recent Attempts</h4>
         ${recentAttemptsHtml}
       </div>
     `;
+
+    this.refreshResidentProfileFeedbackHistory(resident);
   },
 
 
@@ -3537,9 +3553,12 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     try {
       const data = await this.loadFacultyAttemptDetail(residentId, attemptId, facultyScope);
       this.currentFacultyAttemptDetail = data.detail || null;
+      this.currentFacultyAttemptFeedback = [];
       this.renderFacultyAttemptDetail(data.detail);
+      await this.refreshCurrentAttemptFeedbackHistory();
     } catch (error) {
       this.currentFacultyAttemptDetail = null;
+      this.currentFacultyAttemptFeedback = [];
       console.warn("[Resident Ready Faculty] Could not load faculty-safe attempt detail.", error);
       detailPanel.innerHTML = `
         <div class="diagnostic-history-empty-state">
@@ -3550,9 +3569,174 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     }
   },
 
+  getFacultyFeedbackSenderLabel(feedback = {}) {
+    if (feedback.createdByName) return feedback.createdByName;
+
+    if (feedback.createdByEmail) {
+      return String(feedback.createdByEmail)
+        .split("@")[0]
+        .replace(/[._-]+/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    return "Faculty";
+  },
+
+  getFacultyFeedbackContextLabel(feedback = {}) {
+    if (feedback.assignmentTitle) {
+      return `${feedback.assignmentTitle} · ${feedback.attemptScore ?? "--"}%`;
+    }
+
+    if (feedback.attemptType) {
+      return `${feedback.attemptType} · ${feedback.attemptScore ?? "--"}%`;
+    }
+
+    return "Resident feedback";
+  },
+
+  renderFacultyFeedbackHistoryList(feedbackItems = [], emptyMessage = "No feedback has been sent yet.") {
+    if (!feedbackItems.length) {
+      return `
+        <div class="diagnostic-history-empty-state compact">
+          <strong>${this.escapeHtml(emptyMessage)}</strong>
+          <p>Feedback sent to this resident will appear here for faculty reference.</p>
+        </div>
+      `;
+    }
+
+    return feedbackItems
+      .slice(0, 10)
+      .map((feedback) => {
+        const readLabel = feedback.readAt ? `Read ${this.formatDate(feedback.readAt)}` : "Unread by resident";
+
+        return `
+          <article class="faculty-feedback-history-item">
+            <div class="faculty-feedback-history-header">
+              <div>
+                <strong>${this.escapeHtml(this.getFacultyFeedbackContextLabel(feedback))}</strong>
+                <span>
+                  From ${this.escapeHtml(this.getFacultyFeedbackSenderLabel(feedback))}
+                  · Sent ${this.formatDate(feedback.createdAt)}
+                </span>
+              </div>
+
+              <span class="faculty-feedback-read-pill ${feedback.readAt ? "read" : "unread"}">
+                ${this.escapeHtml(readLabel)}
+              </span>
+            </div>
+
+            <p>${this.escapeHtml(feedback.message || "")}</p>
+
+            ${
+              feedback.attemptId
+                ? `<button
+                    class="secondary faculty-review-attempt-btn"
+                    type="button"
+                    data-resident-id="${this.escapeAttribute(feedback.residentId)}"
+                    data-attempt-id="${this.escapeAttribute(feedback.attemptId)}"
+                    data-faculty-scope="organization"
+                  >
+                    Review Related Attempt
+                  </button>`
+                : ""
+            }
+          </article>
+        `;
+      })
+      .join("");
+  },
+
+  async loadFacultyFeedbackHistory({ residentId = "", cohortId = "", attemptId = "", assignmentId = "" } = {}) {
+    if (!this.hasValidBackendSession() || !this.selectedOrganizationId || !residentId || !cohortId) {
+      return [];
+    }
+
+    const query = new URLSearchParams({
+      organizationId: this.selectedOrganizationId,
+      residentId,
+      cohortId
+    });
+
+    if (attemptId) query.set("attemptId", attemptId);
+    if (assignmentId) query.set("assignmentId", assignmentId);
+
+    const data = await this.apiFetch(`getFacultyFeedback?${query.toString()}`, {
+      method: "GET"
+    });
+
+    return Array.isArray(data.feedback) ? data.feedback : [];
+  },
+
+  async refreshCurrentAttemptFeedbackHistory() {
+    const detail = this.currentFacultyAttemptDetail;
+    const historyContainer = document.getElementById("facultyAttemptFeedbackHistoryList");
+
+    if (!detail || !historyContainer) return;
+
+    try {
+      this.currentFacultyAttemptFeedback = await this.loadFacultyFeedbackHistory({
+        residentId: detail.residentId,
+        cohortId: detail.cohortId || detail.assignmentContext?.cohortId || "",
+        attemptId: detail.attemptId
+      });
+
+      historyContainer.innerHTML = this.renderFacultyFeedbackHistoryList(
+        this.currentFacultyAttemptFeedback,
+        "No feedback has been sent for this attempt yet."
+      );
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not load attempt feedback history.", error);
+      historyContainer.innerHTML = `
+        <div class="diagnostic-history-empty-state compact">
+          <strong>Could not load feedback history.</strong>
+          <p>${this.escapeHtml(error.message || "Try refreshing the review.")}</p>
+        </div>
+      `;
+    }
+  },
+
+  async refreshResidentProfileFeedbackHistory(resident = {}) {
+    const historyContainer = document.getElementById("residentGrowthFeedbackHistoryList");
+    if (!historyContainer || !resident?.residentId) return;
+
+    try {
+      const feedback = await this.loadFacultyFeedbackHistory({
+        residentId: resident.residentId,
+        cohortId: resident.cohortId || "unassigned"
+      });
+
+      this.currentResidentProfileFeedback = feedback;
+
+      historyContainer.innerHTML = this.renderFacultyFeedbackHistoryList(
+        feedback,
+        "No feedback has been sent to this resident yet."
+      );
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not load resident feedback history.", error);
+      historyContainer.innerHTML = `
+        <div class="diagnostic-history-empty-state compact">
+          <strong>Could not load resident feedback history.</strong>
+          <p>${this.escapeHtml(error.message || "Try refreshing the profile.")}</p>
+        </div>
+      `;
+    }
+  },
+
+
     renderFacultyFeedbackBox(detail = {}) {
     return `
       <section class="faculty-feedback-box">
+        <div>
+          <strong>Feedback Sent for This Attempt</strong>
+          <p>
+            Review previous feedback before sending another message.
+          </p>
+        </div>
+
+        <div id="facultyAttemptFeedbackHistoryList" class="faculty-feedback-history-list">
+          Loading feedback history...
+        </div>
+
         <div>
           <strong>Send Feedback to Resident</strong>
           <p>
@@ -3626,6 +3810,8 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       });
 
       textarea.value = "";
+      await this.refreshCurrentAttemptFeedbackHistory();
+
       status.textContent = data.message || "Feedback sent to resident.";
       status.className = "dashboard-card-note faculty-feedback-status success";
 

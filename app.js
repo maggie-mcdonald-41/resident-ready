@@ -845,6 +845,29 @@ window.App = {
     return this.latestResidentFeedback;
   },
 
+    isFeedbackUnread(feedback = {}) {
+    return !feedback.readAt;
+  },
+
+  getUnreadFeedbackItems() {
+    return (Array.isArray(this.latestResidentFeedback)
+      ? this.latestResidentFeedback
+      : []
+    ).filter((feedback) => this.isFeedbackUnread(feedback));
+  },
+
+  sortResidentFeedbackItems(feedbackItems = []) {
+    return [...feedbackItems].sort((a, b) => {
+      const unreadCompare =
+        Number(this.isFeedbackUnread(b)) - Number(this.isFeedbackUnread(a));
+
+      if (unreadCompare !== 0) return unreadCompare;
+
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  },
+
+
     getFeedbackSenderLabel(feedback = {}) {
     if (feedback.createdByName) {
       return feedback.createdByName;
@@ -867,28 +890,26 @@ window.App = {
 
     if (!alert || !title || !text) return;
 
-    const feedbackItems = Array.isArray(this.latestResidentFeedback)
-      ? this.latestResidentFeedback
-      : [];
+    const unreadItems = this.getUnreadFeedbackItems();
 
-    if (!this.hasValidResidentBackendSession() || !feedbackItems.length) {
+    if (!this.hasValidResidentBackendSession() || !unreadItems.length) {
       alert.classList.add("hidden");
       return;
     }
 
-    const latestFeedback = feedbackItems[0] || {};
+    const latestFeedback = this.sortResidentFeedbackItems(unreadItems)[0] || {};
     const sender = this.getFeedbackSenderLabel(latestFeedback);
-    const count = feedbackItems.length;
+    const count = unreadItems.length;
 
     title.textContent =
       count === 1
-        ? "Faculty feedback available"
-        : `${count} faculty feedback messages`;
+        ? "New faculty feedback"
+        : `${count} new faculty feedback messages`;
 
     text.textContent =
       count === 1
-        ? `You have feedback from ${sender}.`
-        : `You have ${count} feedback messages. Most recent: ${sender}.`;
+        ? `You have new feedback from ${sender}.`
+        : `You have ${count} unread feedback messages. Most recent: ${sender}.`;
 
     alert.classList.remove("hidden");
   },
@@ -932,9 +953,11 @@ window.App = {
       return;
     }
 
-    const feedbackItems = Array.isArray(this.latestResidentFeedback)
-      ? this.latestResidentFeedback
-      : [];
+    const feedbackItems = this.sortResidentFeedbackItems(
+      Array.isArray(this.latestResidentFeedback)
+        ? this.latestResidentFeedback
+        : []
+    );
 
     if (!feedbackItems.length) {
       this.renderResidentFeedbackAlert();
@@ -950,41 +973,110 @@ window.App = {
 
     list.innerHTML = feedbackItems
       .slice(0, 20)
-      .map((feedback) => `
-        <article class="resident-feedback-card">
-          <div>
-            <strong>${this.getFeedbackContextLabel(feedback)}</strong>
-            <span>
-              From ${this.getFeedbackSenderLabel(feedback)} · ${this.formatDate(feedback.createdAt)}
-            </span>
-          </div>
+      .map((feedback) => {
+        const unread = this.isFeedbackUnread(feedback);
 
-          <p>${feedback.message || ""}</p>
+        return `
+          <article class="resident-feedback-card ${unread ? "unread" : "read"}">
+            <div class="resident-feedback-card-header">
+              <div>
+                <strong>${this.getFeedbackContextLabel(feedback)}</strong>
+                <span>
+                  From ${this.getFeedbackSenderLabel(feedback)} · ${this.formatDate(feedback.createdAt)}
+                </span>
+              </div>
 
-          ${
-            feedback.attemptId
-              ? `<button
-                  class="secondary resident-feedback-review-btn"
-                  type="button"
-                  data-attempt-id="${feedback.attemptId}"
-                >
-                  Review Related Attempt
-                </button>`
-              : ""
-          }
-        </article>
-      `)
+              <span class="resident-feedback-read-pill ${unread ? "unread" : "read"}">
+                ${unread ? "New" : "Read"}
+              </span>
+            </div>
+
+            <p>${feedback.message || ""}</p>
+
+            <div class="resident-feedback-card-actions">
+              ${
+                feedback.attemptId
+                  ? `<button
+                      class="secondary resident-feedback-review-btn"
+                      type="button"
+                      data-attempt-id="${feedback.attemptId}"
+                    >
+                      Review Related Attempt
+                    </button>`
+                  : ""
+              }
+
+              ${
+                unread
+                  ? `<button
+                      class="secondary mark-feedback-read-btn"
+                      type="button"
+                      data-feedback-id="${feedback.feedbackId}"
+                    >
+                      Mark as Read
+                    </button>`
+                  : ""
+              }
+            </div>
+          </article>
+        `;
+      })
       .join("");
   },
 
+  async markFeedbackRead(feedbackId = "") {
+    if (!feedbackId || !this.hasValidResidentBackendSession()) return;
+
+    const feedback = this.latestResidentFeedback.find((item) =>
+      item.feedbackId === feedbackId
+    );
+
+    try {
+      const data = await this.residentApiFetch("markResidentFeedbackRead", {
+        method: "POST",
+        body: JSON.stringify({
+          feedbackId,
+          organizationId: feedback?.organizationId || ""
+        })
+      });
+
+      this.latestResidentFeedback = this.latestResidentFeedback.map((item) =>
+        item.feedbackId === feedbackId
+          ? {
+              ...item,
+              readAt: data.feedback?.readAt || new Date().toISOString(),
+              isRead: true
+            }
+          : item
+      );
+
+      this.renderResidentFeedbackAlert();
+      this.renderResidentFeedbackInbox();
+
+      console.log("[Resident Ready] Feedback marked as read.", data);
+    } catch (error) {
+      console.warn("[Resident Ready] Could not mark feedback as read.", error);
+      alert(error.message || "Could not mark feedback as read.");
+    }
+  },
+
+
   reviewFeedbackAttempt(attemptId = "") {
     if (!attemptId) return;
+
+    const feedback = this.latestResidentFeedback.find((item) =>
+      item.attemptId === attemptId && this.isFeedbackUnread(item)
+    );
 
     const localAttempt = this.getLocalAttemptById(attemptId);
 
     if (!localAttempt) {
       alert("This related attempt is still loading. Refresh the page and try again.");
       return;
+    }
+
+    if (feedback?.feedbackId) {
+      this.markFeedbackRead(feedback.feedbackId);
     }
 
     this.openSavedAttemptReview(attemptId, "all");
@@ -2228,7 +2320,22 @@ init() {
   if (residentFeedbackInboxList) {
     residentFeedbackInboxList.addEventListener("click", (event) => {
       const reviewBtn = event.target.closest(".resident-feedback-review-btn");
-      if (!reviewBtn) return;
+       const residentFeedbackInboxList = document.getElementById("residentFeedbackInboxList");
+  if (residentFeedbackInboxList) {
+    residentFeedbackInboxList.addEventListener("click", (event) => {
+      const reviewBtn = event.target.closest(".resident-feedback-review-btn");
+      const markReadBtn = event.target.closest(".mark-feedback-read-btn");
+
+      if (markReadBtn) {
+        this.markFeedbackRead(markReadBtn.dataset.feedbackId || "");
+        return;
+      }
+
+      if (reviewBtn) {
+        this.reviewFeedbackAttempt(reviewBtn.dataset.attemptId || "");
+      }
+    });
+  } if (!reviewBtn) return;
 
       this.reviewFeedbackAttempt(reviewBtn.dataset.attemptId || "");
     });

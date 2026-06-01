@@ -120,7 +120,8 @@ exports.handler = async function (event) {
       createdByEmail: requester.email,
       createdAt: now,
       status: "active",
-      readAt: null
+      readAt: null,
+      isRead: false
     };
 
     const feedbackKey =
