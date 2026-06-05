@@ -1899,7 +1899,7 @@ window.FacultyApp = {
     const isAdmin = this.isOrgAdmin();
     const isPrimaryAdmin = this.isPrimaryAdmin();
 
-    this.setElementVisibility("facultyAddAdultPanel", isAdmin);
+    this.setElementVisibility("facultyManagementSection", isAdmin);
     this.setElementVisibility("facultyAdminMemberManagementBox", isAdmin);
     this.setElementVisibility("facultyCohortControlPanel", isAdmin);
     this.setElementVisibility("facultyPromoteCohortPanel", isAdmin);
@@ -3944,6 +3944,32 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     } else {
       this.renderFacultyPreviewSignedOut();
     }
+
+       const scrollToFacultyDashboardSection = (targetId = "") => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      document.querySelectorAll(".dashboard-section-highlight").forEach((section) => {
+        section.classList.remove("dashboard-section-highlight");
+      });
+
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+      target.classList.add("dashboard-section-highlight");
+
+      window.setTimeout(() => {
+        target.classList.remove("dashboard-section-highlight");
+      }, 1800);
+    };
+
+    document.querySelectorAll("[data-faculty-scroll-target]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        scrollToFacultyDashboardSection(event.currentTarget.dataset.facultyScrollTarget || "");
+      });
+    }); 
 
     const refreshBtn = document.getElementById("refreshFacultyPreviewBtn");
     if (refreshBtn) {

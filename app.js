@@ -50,7 +50,7 @@ window.App = {
       document.getElementById("homeRiskLevel").textContent = "--";
       document.getElementById("homeQuestionCount").textContent = "--";
 
-      const latestPanel = document.getElementById("residentLatestAttemptPanel");
+      const latestPanel = document.getElementById("residentProgressSection");
       if (latestPanel) latestPanel.classList.add("hidden");
 
       const historyList = document.getElementById("residentAttemptHistoryList");
@@ -1712,7 +1712,7 @@ window.App = {
   },
 
   renderLatestAttemptPanel(scoredAttempt) {
-    const panel = document.getElementById("residentLatestAttemptPanel");
+    const panel = document.getElementById("residentProgressSection");
     const title = document.getElementById("latestAttemptTitle");
     const details = document.getElementById("latestAttemptDetails");
 
@@ -2316,11 +2316,33 @@ init() {
   }
 
 
+  const scrollToResidentDashboardSection = (targetId = "") => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    document.querySelectorAll(".dashboard-section-highlight").forEach((section) => {
+      section.classList.remove("dashboard-section-highlight");
+    });
+
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
+    target.classList.add("dashboard-section-highlight");
+
+    window.setTimeout(() => {
+      target.classList.remove("dashboard-section-highlight");
+    }, 1800);
+  };
+
+  document.querySelectorAll("[data-resident-scroll-target]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      scrollToResidentDashboardSection(event.currentTarget.dataset.residentScrollTarget || "");
+    });
+  });
+
   const residentFeedbackInboxList = document.getElementById("residentFeedbackInboxList");
-  if (residentFeedbackInboxList) {
-    residentFeedbackInboxList.addEventListener("click", (event) => {
-      const reviewBtn = event.target.closest(".resident-feedback-review-btn");
-       const residentFeedbackInboxList = document.getElementById("residentFeedbackInboxList");
   if (residentFeedbackInboxList) {
     residentFeedbackInboxList.addEventListener("click", (event) => {
       const reviewBtn = event.target.closest(".resident-feedback-review-btn");
@@ -2335,12 +2357,7 @@ init() {
         this.reviewFeedbackAttempt(reviewBtn.dataset.attemptId || "");
       }
     });
-  } if (!reviewBtn) return;
-
-      this.reviewFeedbackAttempt(reviewBtn.dataset.attemptId || "");
-    });
   }
-
 
   const residentAssignedWorkList = document.getElementById("residentAssignedWorkList");
   if (residentAssignedWorkList) {

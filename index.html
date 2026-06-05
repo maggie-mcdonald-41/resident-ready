@@ -72,6 +72,22 @@
           Complete your first diagnostic to generate board-readiness feedback and targeted review data.
         </p>
 
+        
+        <nav class="dashboard-section-nav resident-dashboard-nav" aria-label="Resident dashboard sections">
+          <button type="button" class="dashboard-nav-btn" data-resident-scroll-target="residentAssignedWorkSection">
+            Assigned Work
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-resident-scroll-target="residentFeedbackSection">
+            Feedback
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-resident-scroll-target="residentProgressSection">
+            Progress
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-resident-scroll-target="residentHistorySection">
+            History
+          </button>
+        </nav>
+
         <section id="residentProfileCard" class="resident-profile-card">
           <div id="residentProfileSummaryView" class="resident-profile-summary-view">
             <div>
@@ -83,6 +99,7 @@
               <div id="residentProfileChips" class="resident-profile-chips"></div>
             </div>
 
+            
             <div class="resident-profile-actions">
               <button id="setupResidentProfileBtn" type="button">Set Up Profile</button>
               <button id="editResidentProfileBtn" class="secondary hidden" type="button">Edit Profile</button>
@@ -220,6 +237,7 @@
           <button id="startDiagnosticBtn">Start New Diagnostic</button>
         </div>
 
+
         <section id="residentFeedbackAlert" class="resident-feedback-alert hidden">
           <div>
             <p class="eyebrow-label">Faculty Feedback</p>
@@ -234,7 +252,7 @@
           </button>
         </section>
 
-        <section class="resident-assigned-work-panel">
+        <section id="residentAssignedWorkSection" class="resident-assigned-work-panel dashboard-zone dashboard-zone-assignments">
           <div>
             <p class="eyebrow-label">Assigned Work</p>
             <h3>Your Assignments</h3>
@@ -248,7 +266,7 @@
           </div>
         </section>
 
-        <section class="resident-feedback-inbox-panel">
+        <section id="residentFeedbackSection" class="resident-feedback-inbox-panel dashboard-zone dashboard-zone-feedback">
           <div>
             <p class="eyebrow-label">Faculty Feedback</p>
             <h3>Feedback Inbox</h3>
@@ -262,7 +280,7 @@
           </div>
         </section>
 
-        <section id="residentLatestAttemptPanel" class="latest-attempt-panel hidden">
+        <section id="residentProgressSection" class="latest-attempt-panel hidden dashboard-zone dashboard-zone-progress">
           <div>
             <p class="eyebrow-label">Latest Diagnostic</p>
             <h3 id="latestAttemptTitle">No diagnostic completed yet</h3>
@@ -284,7 +302,7 @@
           </div>
         </section>
 
-<div class="resident-dashboard-sections">
+<div id="residentInsightsSection" class="resident-dashboard-sections dashboard-zone dashboard-zone-progress">
   <section class="dashboard-card growth-insights-card">
     <h3>Growth Insights</h3>
     <div id="growthInsightsPanel" class="growth-insights-panel">
@@ -327,7 +345,7 @@
     </div>
   </section>
 
-  <section class="dashboard-card full-width">
+  <section id="residentHistorySection" class="dashboard-card full-width dashboard-zone dashboard-zone-history">
     <h3>Saved Diagnostic Attempt History</h3>
     <div id="residentAttemptHistoryList" class="attempt-history-list">
       Complete a diagnostic to begin building your attempt history.

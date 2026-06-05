@@ -85,7 +85,31 @@
           Sign in with Google to load the faculty dashboard.
         </div>
 
-                <section class="faculty-onboarding-panel">
+        <nav class="dashboard-section-nav faculty-dashboard-nav" aria-label="Faculty dashboard sections">
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyContextSection">
+            Context
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyAssignmentsSection">
+            Assignments
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyOverviewSection">
+            Overview
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyRosterSection">
+            Roster
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyProfileSection">
+            Profile
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyReviewSection">
+            Review
+          </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyManagementSection">
+            Management
+          </button>
+        </nav>
+
+        <section class="faculty-onboarding-panel">
           <div>
             <p class="eyebrow-label">Setup Checklist</p>
             <h3>Institution Onboarding</h3>
@@ -129,7 +153,7 @@
           </div>
         </section>
 
-        <section class="faculty-organization-control-panel">
+        <section id="facultyContextSection" class="faculty-organization-control-panel dashboard-zone dashboard-zone-context">
           <div>
             <p class="eyebrow-label">Institution Access</p>
             <h3>Select an Organization</h3>
@@ -152,7 +176,7 @@
           </div>
         </section>
 
-        <section id="facultyAddAdultPanel" class="faculty-add-adult-panel">
+        <section id="facultyManagementSection" class="faculty-add-adult-panel dashboard-zone dashboard-zone-management">
           <div>
             <p class="eyebrow-label">Faculty/Admin Access</p>
             <h3>Add Faculty/Admin Member</h3>
@@ -203,7 +227,7 @@
           </div>
         </section>
 
-        <section id="facultyCohortControlPanel" class="faculty-cohort-control-panel">
+        <section id="facultyCohortControlPanel" class="faculty-cohort-control-panel dashboard-zone dashboard-zone-management">
           <div>
             <p class="eyebrow-label">Cohort Controls</p>
             <h3>Select a Cohort</h3>
@@ -264,7 +288,7 @@
           </div>
         </section>
 
-        <section id="facultyPromoteCohortPanel" class="faculty-promote-cohort-panel">
+        <section id="facultyPromoteCohortPanel" class="faculty-promote-cohort-panel dashboard-zone dashboard-zone-management">
           <div>
             <p class="eyebrow-label">Cohort Promotion</p>
             <h3>Promote Residents</h3>
@@ -298,7 +322,7 @@
           </p>
         </section>
 
-        <section class="faculty-assignment-panel">
+        <section id="facultyAssignmentsSection" class="faculty-assignment-panel dashboard-zone dashboard-zone-assignments">
           <div>
             <p class="eyebrow-label">Assignments</p>
             <h3>Create Diagnostic Assignment</h3>
@@ -379,7 +403,7 @@
           </div>
         </section>
 
-        <section class="faculty-access-code-panel">
+        <section class="faculty-access-code-panel dashboard-zone dashboard-zone-management">
           <div>
             <p class="eyebrow-label">Resident Access</p>
             <h3>Create Resident Access Code</h3>
@@ -418,7 +442,7 @@
           </p>
         </section>
 
-        <section class="faculty-summary-metric-grid">
+        <section id="facultyOverviewSection" class="faculty-summary-metric-grid dashboard-zone dashboard-zone-overview">
           <div class="results-metric">
             <span>Selected Cohort</span>
             <strong id="facultySelectedCohortLabel">All</strong>
@@ -440,7 +464,7 @@
           </div>
         </section>
 
-        <section class="faculty-cohort-highlights-grid">
+        <section class="faculty-cohort-highlights-grid dashboard-zone dashboard-zone-overview">
           <div class="dashboard-card">
             <h3>Cohort Strengths</h3>
             <p class="dashboard-card-note">
@@ -473,7 +497,7 @@
         </section>
 
         <div class="faculty-preview-grid">
-          <section class="dashboard-card full-width">
+          <section id="facultyRosterSection" class="dashboard-card full-width dashboard-zone dashboard-zone-roster">
             <h3>Roster</h3>
             <p class="dashboard-card-note">
               Residents appear here after they join with a resident access code. Use this roster to monitor progress and move residents between cohorts.
@@ -486,7 +510,7 @@
             </div>
           </section>
 
-          <section class="dashboard-card full-width">
+          <section id="facultyProfileSection" class="dashboard-card full-width dashboard-zone dashboard-zone-profile">
             <h3>Resident Growth Profile</h3>
             <p class="dashboard-card-note">
               Select a resident from the roster to view recent progress, resident-facing feedback patterns, and faculty-safe review links.
@@ -506,7 +530,7 @@
             </div>
           </section>
 
-          <section class="dashboard-card full-width">
+          <section id="facultyReviewSection" class="dashboard-card full-width dashboard-zone dashboard-zone-review">
             <h3>Faculty-Safe Attempt Review</h3>
             <p class="dashboard-card-note">
               Shows question stem, answer choices, resident-selected answer, correct answer, and rationale.
