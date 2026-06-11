@@ -2651,32 +2651,86 @@ body.dark-mode .attempt-review-btn {
 
 .faculty-onboarding-steps {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.faculty-onboarding-progress {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.faculty-onboarding-progress strong,
+.faculty-onboarding-progress p {
+  margin: 0;
+}
+
+.faculty-onboarding-progress p {
+  color: var(--blue-slate);
+  font-weight: 800;
+}
+
+.faculty-onboarding-progress-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(62, 92, 118, 0.15);
+}
+
+.faculty-onboarding-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--medical-red);
+  transition: width 0.25s ease;
+}
+
+.faculty-onboarding-empty {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(62, 92, 118, 0.14);
+}
+
+.faculty-onboarding-empty strong,
+.faculty-onboarding-empty p {
+  margin: 0;
+}
+
+.faculty-onboarding-empty p {
+  margin-top: 4px;
+  color: var(--blue-slate);
+  font-weight: 800;
 }
 
 .faculty-onboarding-step {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: flex-start;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
   padding: 12px;
   border-radius: var(--radius-md);
-  background: rgba(116, 140, 171, 0.12);
+  background: rgba(255, 255, 255, 0.68);
   border: 1px solid rgba(62, 92, 118, 0.14);
 }
 
 .faculty-onboarding-step > span {
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
   border-radius: 999px;
   background: var(--medical-red);
-  color: var(--white);
+  color: var(--eggshell);
   font-weight: 900;
-  font-size: 0.85rem;
+}
+
+.faculty-onboarding-step.complete > span {
+  background: #1f7a3f;
 }
 
 .faculty-onboarding-step strong {
@@ -2686,16 +2740,64 @@ body.dark-mode .attempt-review-btn {
 }
 
 .faculty-onboarding-step p {
-  font-size: 0.88rem;
+  margin: 4px 0 0;
   color: var(--blue-slate);
   font-weight: 700;
 }
+
+.faculty-onboarding-step-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.onboarding-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.onboarding-status-pill.complete {
+  background: rgba(31, 122, 63, 0.14);
+  color: #1f7a3f;
+}
+
+.onboarding-status-pill.incomplete {
+  background: rgba(120, 0, 0, 0.12);
+  color: var(--medical-red);
+}
+
+.onboarding-status-pill.recommended {
+  background: rgba(183, 121, 31, 0.14);
+  color: var(--warning, #b7791f);
+}
+
+.onboarding-jump-btn {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+  .faculty-onboarding-panel,
+  .faculty-onboarding-step {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-jump-btn {
+    width: 100%;
+  }
 
 body.dark-mode .faculty-onboarding-panel,
 body.dark-mode .faculty-onboarding-step {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.14);
 }
+
+
 
 body.dark-mode .faculty-onboarding-step strong,
 body.dark-mode .faculty-onboarding-step p {

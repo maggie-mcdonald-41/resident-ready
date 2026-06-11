@@ -10,6 +10,7 @@ window.FacultyApp = {
   selectedCohortId: "all",
   latestFacultyIndexData: null,
   latestFacultyAssignments: [],
+  latestGeneralFeedbackSentAt: null,
   showArchivedAssignments: false,
   assignmentDashboardFilter: "active",
   editingAssignmentId: "",
@@ -1371,12 +1372,14 @@ window.FacultyApp = {
     if (!this.hasValidBackendSession() || !this.selectedOrganizationId) {
       this.latestFacultyAssignments = [];
       this.renderFacultyAssignmentsDashboard();
+      this.renderFacultyOnboardingChecklist();
       return;
     }
 
     try {
       await this.loadFacultyAssignments();
       this.renderFacultyAssignmentsDashboard();
+      this.renderFacultyOnboardingChecklist();
     } catch (error) {
       console.warn("[Resident Ready Faculty] Could not load assignments.", error);
       list.innerHTML = `
@@ -1895,10 +1898,223 @@ window.FacultyApp = {
     element.classList.toggle("hidden", !shouldShow);
   },
 
+  getOnboardingActiveResidents() {
+    return Array.isArray(this.latestFacultyIndexData?.roster?.residents)
+      ? this.latestFacultyIndexData.roster.residents
+      : [];
+  },
+
+  getOnboardingActiveAssignments() {
+    return Array.isArray(this.latestFacultyAssignments)
+      ? this.latestFacultyAssignments.filter((assignment) => assignment.status !== "archived")
+      : [];
+  },
+
+  getOnboardingFacultyMembers() {
+    return Array.isArray(this.latestOrganizationAdultMembers)
+      ? this.latestOrganizationAdultMembers.filter((member) =>
+          member.status === "active" && member.role === "faculty"
+        )
+      : [];
+  },
+
+  hasAssignedFacultyCohorts() {
+    return this.getOnboardingFacultyMembers().some((member) =>
+      Array.isArray(member.assignedCohortIds) &&
+      member.assignedCohortIds.some((cohortId) => cohortId && cohortId !== "all")
+    );
+  },
+
+  getOnboardingChecklistItems() {
+    const activeCohorts = Array.isArray(this.latestOrganizationCohorts)
+      ? this.latestOrganizationCohorts.filter((cohort) => cohort.status !== "archived")
+      : [];
+
+    const residents = this.getOnboardingActiveResidents();
+    const facultyMembers = this.getOnboardingFacultyMembers();
+    const assignments = this.getOnboardingActiveAssignments();
+
+    const hasOrg = !!this.selectedOrganizationId;
+    const hasCohort = activeCohorts.length > 0;
+    const hasResidentAccessPath = !!this.latestCreatedResidentAccessCode || residents.length > 0;
+    const hasFaculty = facultyMembers.length > 0;
+    const hasFacultyCohortAccess = this.hasAssignedFacultyCohorts();
+    const hasAssignment = assignments.length > 0;
+    const hasSentMessageThisSession = !!this.latestGeneralFeedbackSentAt;
+
+    return [
+      {
+        number: 1,
+        title: "Select your organization",
+        description: hasOrg
+          ? `${this.getSelectedOrganizationLabel()} is selected.`
+          : "Choose the institution or program you want to manage.",
+        isComplete: hasOrg,
+        targetId: "facultyContextSection",
+        actionLabel: "Go to Context"
+      },
+      {
+        number: 2,
+        title: "Create your first cohort",
+        description: hasCohort
+          ? `${activeCohorts.length} active cohort${activeCohorts.length === 1 ? "" : "s"} ready.`
+          : "Create a cohort such as PGY-1 2026, Family Medicine, or Board Prep Group.",
+        isComplete: hasCohort,
+        targetId: "facultyManagementSection",
+        actionLabel: "Manage Cohorts"
+      },
+      {
+        number: 3,
+        title: "Create a resident access code",
+        description: hasResidentAccessPath
+          ? "Residents have a path into the organization."
+          : "Create a one-year resident access code and share it with the correct cohort.",
+        isComplete: hasResidentAccessPath,
+        targetId: "facultyManagementSection",
+        actionLabel: "Create Code"
+      },
+      {
+        number: 4,
+        title: "Add faculty/admin members",
+        description: hasFaculty
+          ? `${facultyMembers.length} Faculty member${facultyMembers.length === 1 ? "" : "s"} added.`
+          : "Add faculty or admin members who need organization access.",
+        isComplete: hasFaculty,
+        targetId: "facultyManagementSection",
+        actionLabel: "Add Members"
+      },
+      {
+        number: 5,
+        title: "Assign faculty to cohorts",
+        description: hasFacultyCohortAccess
+          ? "At least one Faculty member has cohort access."
+          : "Assign Faculty members to the cohorts they should monitor.",
+        isComplete: hasFacultyCohortAccess,
+        targetId: "facultyManagementSection",
+        actionLabel: "Assign Access"
+      },
+      {
+        number: 6,
+        title: "Create first diagnostic assignment",
+        description: hasAssignment
+          ? `${assignments.length} active assignment${assignments.length === 1 ? "" : "s"} created.`
+          : "Create a diagnostic assignment so residents know what to complete.",
+        isComplete: hasAssignment,
+        targetId: "facultyAssignmentsSection",
+        actionLabel: "Create Assignment"
+      },
+      {
+        number: 7,
+        title: "Send a first message",
+        description: hasSentMessageThisSession
+          ? "A message was sent during this session."
+          : "Send individual or cohort guidance from Messaging when you are ready.",
+        isComplete: hasSentMessageThisSession,
+        targetId: "facultyMessagingSection",
+        actionLabel: "Open Messaging",
+        optional: true
+      }
+    ];
+  },
+
+  renderOnboardingStatusPill(item = {}) {
+    if (item.isComplete) {
+      return `<span class="onboarding-status-pill complete">Complete</span>`;
+    }
+
+    if (item.optional) {
+      return `<span class="onboarding-status-pill recommended">Recommended</span>`;
+    }
+
+    return `<span class="onboarding-status-pill incomplete">Next Step</span>`;
+  },
+
+  renderFacultyOnboardingChecklist() {
+    const list = document.getElementById("facultyOnboardingChecklist");
+    if (!list) return;
+
+    if (!this.hasValidBackendSession()) {
+      list.innerHTML = `
+        <div class="faculty-onboarding-empty">
+          <strong>Sign in to start setup.</strong>
+          <p>The setup checklist will update after your organization access loads.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (!this.isOrgAdmin()) {
+      list.innerHTML = `
+        <div class="faculty-onboarding-empty">
+          <strong>Faculty dashboard ready.</strong>
+          <p>Institution setup tools are available to Primary Admins and Admins.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const items = this.getOnboardingChecklistItems();
+    const completedCount = items.filter((item) => item.isComplete).length;
+
+    list.innerHTML = `
+      <div class="faculty-onboarding-progress">
+        <div>
+          <strong>${completedCount}/${items.length} setup steps complete</strong>
+          <p>Use the checklist to jump directly to the next setup task.</p>
+        </div>
+        <div class="faculty-onboarding-progress-bar" aria-hidden="true">
+          <span style="width: ${Math.round((completedCount / items.length) * 100)}%"></span>
+        </div>
+      </div>
+
+      ${items.map((item) => `
+        <div class="faculty-onboarding-step ${item.isComplete ? "complete" : ""}">
+          <span>${item.number}</span>
+          <div>
+            <div class="faculty-onboarding-step-header">
+              <strong>${this.escapeHtml(item.title)}</strong>
+              ${this.renderOnboardingStatusPill(item)}
+            </div>
+            <p>${this.escapeHtml(item.description)}</p>
+          </div>
+          <button
+            class="secondary onboarding-jump-btn"
+            type="button"
+            data-onboarding-target="${this.escapeAttribute(item.targetId)}"
+          >
+            ${this.escapeHtml(item.actionLabel)}
+          </button>
+        </div>
+      `).join("")}
+    `;
+  },
+
+  scrollToFacultyDashboardSection(targetId = "") {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    document.querySelectorAll(".dashboard-section-highlight").forEach((section) => {
+      section.classList.remove("dashboard-section-highlight");
+    });
+
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
+    target.classList.add("dashboard-section-highlight");
+
+    window.setTimeout(() => {
+      target.classList.remove("dashboard-section-highlight");
+    }, 1800);
+  },
+
+
   renderRoleBasedControls() {
     const isAdmin = this.isOrgAdmin();
     const isPrimaryAdmin = this.isPrimaryAdmin();
 
+    this.setElementVisibility("facultyOnboardingPanel", isAdmin);
     this.setElementVisibility("facultyManagementSection", isAdmin);
     this.setElementVisibility("facultyAdminMemberManagementBox", isAdmin);
     this.setElementVisibility("facultyCohortControlPanel", isAdmin);
@@ -1922,6 +2138,7 @@ window.FacultyApp = {
     }
 
     this.renderAdultMemberRoleOptions();
+    this.renderFacultyOnboardingChecklist();
   },
 
   async loadFacultyAdminMembers() {
@@ -2152,6 +2369,7 @@ window.FacultyApp = {
       this.latestOrganizationAdultMembers = [];
       const box = document.getElementById("facultyAdminMemberManagementBox");
       if (box) box.classList.add("hidden");
+      this.renderFacultyOnboardingChecklist();
       return;
     }
 
@@ -2161,6 +2379,7 @@ window.FacultyApp = {
 
       await this.loadFacultyAdminMembers();
       this.renderFacultyAdminMemberList();
+      this.renderFacultyOnboardingChecklist();
     } catch (error) {
       console.warn("[Resident Ready Faculty] Could not load Faculty/Admin members.", error);
       list.innerHTML = `
@@ -2754,6 +2973,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.latestAllOrganizationCohorts = [];
     this.latestOrganizationAdultMembers = [];
     this.latestFacultyAssignments = [];
+    this.latestGeneralFeedbackSentAt = null;
     this.currentFacultyAttemptDetail = null;
     this.showArchivedAssignments = false;
     this.assignmentDashboardFilter = "active";
@@ -2769,6 +2989,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     this.renderManageCohortsPanel();
     this.renderPromoteCohortOptions();
     this.renderFacultyAssignmentsDashboard();
+    this.renderFacultyOnboardingChecklist();
 
     this.renderCohortSummary([], []);
     this.renderHighlightList("facultyCohortStrengthsList", [], "Sign in to view cohort strengths.");
@@ -2882,6 +3103,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
               <p>Faculty-safe reviews require assigned cohort access.</p>
             </div>
           `;
+          this.renderFacultyOnboardingChecklist();
           return;
         }
 
@@ -2937,14 +3159,14 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       `;
 
       const growthProfilePanel = document.getElementById("residentGrowthProfilePanel");
-      if (growthProfilePanel) {
-        growthProfilePanel.innerHTML = `
+        detailPanel.innerHTML = `
           <div class="diagnostic-history-empty-state">
-            <strong>Select a resident from the roster.</strong>
-            <p>The profile will show recent progress, strengths, needs, and faculty-safe review links.</p>
+            <strong>No faculty-safe review selected.</strong>
+            <p>Once residents complete attempts, select Review to open question-level details.</p>
           </div>
         `;
-      }
+        this.renderFacultyOnboardingChecklist();
+        return;
     } catch (error) {
       console.warn("[Resident Ready Faculty] Could not render faculty preview.", error);
 
@@ -3534,6 +3756,9 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
           await this.refreshResidentProfileFeedbackHistory(resident);
         }
       }
+
+      this.latestGeneralFeedbackSentAt = new Date().toISOString();
+      this.renderFacultyOnboardingChecklist();
 
       status.textContent = data.message || "Feedback sent.";
       status.className = "dashboard-card-note general-feedback-status success";
@@ -4151,31 +4376,21 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
       this.renderFacultyPreviewSignedOut();
     }
 
-       const scrollToFacultyDashboardSection = (targetId = "") => {
-      const target = document.getElementById(targetId);
-      if (!target) return;
-
-      document.querySelectorAll(".dashboard-section-highlight").forEach((section) => {
-        section.classList.remove("dashboard-section-highlight");
-      });
-
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-
-      target.classList.add("dashboard-section-highlight");
-
-      window.setTimeout(() => {
-        target.classList.remove("dashboard-section-highlight");
-      }, 1800);
-    };
-
-    document.querySelectorAll("[data-faculty-scroll-target]").forEach((button) => {
+       document.querySelectorAll("[data-faculty-scroll-target]").forEach((button) => {
       button.addEventListener("click", (event) => {
-        scrollToFacultyDashboardSection(event.currentTarget.dataset.facultyScrollTarget || "");
+        this.scrollToFacultyDashboardSection(event.currentTarget.dataset.facultyScrollTarget || "");
       });
-    }); 
+    });
+
+    const facultyOnboardingChecklist = document.getElementById("facultyOnboardingChecklist");
+    if (facultyOnboardingChecklist) {
+      facultyOnboardingChecklist.addEventListener("click", (event) => {
+        const jumpBtn = event.target.closest(".onboarding-jump-btn");
+        if (!jumpBtn) return;
+
+        this.scrollToFacultyDashboardSection(jumpBtn.dataset.onboardingTarget || "");
+      });
+    }
 
     const refreshBtn = document.getElementById("refreshFacultyPreviewBtn");
     if (refreshBtn) {
