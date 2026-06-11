@@ -139,7 +139,12 @@ window.App = {
     this.latestResidentOrganizationMemberships = [];
     this.latestResidentAssignments = [];
     this.latestResidentFeedback = [];
+    this.activeAssignmentContext = null;
+
+    this.renderResidentAssignedWork();
     this.renderResidentFeedbackAlert();
+    this.renderResidentFeedbackInbox();
+    this.renderResidentInstitutionPanel();
   },
 
   getResidentProfile() {
@@ -707,7 +712,9 @@ window.App = {
     }
 
     this.renderResidentHome();
-
+    this.renderResidentAssignedWork();
+    this.renderResidentFeedbackAlert();
+    this.renderResidentFeedbackInbox();
     this.renderGrowthInsights();
 
     if (window.ResidentDashboardUI && typeof window.ResidentDashboardUI.clear === "function") {
@@ -722,7 +729,13 @@ window.App = {
       this.latestResidentOrganizationMemberships = [];
       this.latestResidentAssignments = [];
       this.latestResidentFeedback = [];
+      this.activeAssignmentContext = null;
+
       this.renderResidentInstitutionPanel();
+      this.renderResidentAssignedWork();
+      this.renderResidentFeedbackAlert();
+      this.renderResidentFeedbackInbox();
+
       return [];
     }
 
@@ -926,6 +939,14 @@ window.App = {
   },
 
   getFeedbackContextLabel(feedback = {}) {
+    if (feedback.contextType === "cohort") {
+      return `Cohort Feedback · ${feedback.cohortLabel || "Your cohort"}`;
+    }
+
+    if (feedback.contextType === "general") {
+      return "General Faculty Feedback";
+    }
+
     if (feedback.assignmentTitle) {
       return `${feedback.assignmentTitle} · ${feedback.attemptScore ?? "--"}%`;
     }

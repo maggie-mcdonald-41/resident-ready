@@ -619,6 +619,7 @@ body.dark-mode .dashboard-section-highlight {
 }
 
 .resident-dashboard-nav [data-resident-scroll-target="residentFeedbackSection"],
+.faculty-dashboard-nav [data-faculty-scroll-target="facultyMessagingSection"],
 .faculty-dashboard-nav [data-faculty-scroll-target="facultyReviewSection"] {
   border-color: rgba(120, 0, 0, 0.38);
 }
@@ -3711,6 +3712,99 @@ body.dark-mode .resident-feedback-alert p {
     width: 100%;
   }
 }
+
+.general-feedback-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(62, 92, 118, 0.16);
+}
+
+.general-feedback-controls {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.45fr) minmax(220px, 0.7fr) minmax(240px, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.general-feedback-controls label,
+.general-feedback-message-label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--blue-slate);
+}
+
+.general-feedback-controls select,
+.general-feedback-message-label textarea {
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(62, 92, 118, 0.28);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 700;
+  background: var(--white);
+  color: var(--ink-black);
+}
+
+.general-feedback-message-label textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.general-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.general-feedback-status.success {
+  color: #1f7a3f;
+  font-weight: 800;
+}
+
+.general-feedback-status.error {
+  color: var(--medical-red);
+  font-weight: 800;
+}
+
+body.dark-mode .general-feedback-panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .general-feedback-controls label,
+body.dark-mode .general-feedback-message-label {
+  color: var(--eggshell);
+}
+
+body.dark-mode .general-feedback-controls select,
+body.dark-mode .general-feedback-message-label textarea {
+  background: var(--ink-black);
+  color: var(--eggshell);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 760px) {
+  .general-feedback-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .general-feedback-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .general-feedback-actions button {
+    width: 100%;
+  }
+}
+
 
 .faculty-feedback-box {
   display: grid;

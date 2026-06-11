@@ -98,6 +98,9 @@
           <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyRosterSection">
             Roster
           </button>
+          <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyMessagingSection">
+            Messaging
+          </button>
           <button type="button" class="dashboard-nav-btn" data-faculty-scroll-target="facultyProfileSection">
             Profile
           </button>
@@ -500,13 +503,61 @@
           <section id="facultyRosterSection" class="dashboard-card full-width dashboard-zone dashboard-zone-roster">
             <h3>Roster</h3>
             <p class="dashboard-card-note">
-              Residents appear here after they join with a resident access code. Use this roster to monitor progress and move residents between cohorts.
-            </p>
-            <p id="facultyRosterActionStatus" class="dashboard-card-note roster-action-status">
-              Use the cohort selector on a resident row to move that resident to another active cohort.
+              Residents appear after joining with an organization access code. Admins can move residents between active cohorts.
             </p>
             <div id="facultyRosterList" class="attempt-history-list">
               No roster data loaded yet.
+            </div>
+          </section>
+
+          <section id="facultyMessagingSection" class="dashboard-card full-width dashboard-zone dashboard-zone-feedback">
+            <h3>Messaging</h3>
+            <p class="dashboard-card-note">
+              Send guidance to one resident or to an entire cohort.
+            </p>
+
+            <div class="general-feedback-panel">
+              <div class="general-feedback-controls">
+                <label for="generalFeedbackScopeSelect">
+                  Send To
+                  <select id="generalFeedbackScopeSelect">
+                    <option value="resident">Individual Resident</option>
+                    <option value="cohort">Entire Cohort</option>
+                  </select>
+                </label>
+
+                <label for="generalFeedbackCohortSelect" id="generalFeedbackCohortLabel" class="hidden">
+                  Cohort
+                  <select id="generalFeedbackCohortSelect">
+                    <option value="">Select cohort</option>
+                  </select>
+                </label>
+
+                <label for="generalFeedbackResidentSelect" id="generalFeedbackResidentLabel">
+                  Resident
+                  <select id="generalFeedbackResidentSelect">
+                    <option value="">Select resident</option>
+                  </select>
+                </label>
+              </div>
+
+              <label for="generalFeedbackMessageInput" class="general-feedback-message-label">
+                Feedback Message
+                <textarea
+                  id="generalFeedbackMessageInput"
+                  rows="4"
+                  placeholder="Example: Please review the Week 2 remediation notes before your next diagnostic. Focus especially on initial management and medication selection questions."
+                ></textarea>
+              </label>
+
+              <div class="general-feedback-actions">
+                <button id="sendGeneralFeedbackBtn" class="secondary" type="button">
+                  Send Feedback
+                </button>
+                <span id="generalFeedbackStatus" class="dashboard-card-note general-feedback-status">
+                  Choose a recipient and write feedback.
+                </span>
+              </div>
             </div>
           </section>
 

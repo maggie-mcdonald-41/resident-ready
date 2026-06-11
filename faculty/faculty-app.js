@@ -2854,6 +2854,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
           this.renderCohortSelector([]);
           this.renderResidentAccessCodeCohortOptions();
           this.renderAssignmentCohortOptions();
+          this.renderGeneralFeedbackResidentOptions();
           await this.refreshFacultyAdminMembersPanel();
           await this.refreshFacultyAssignmentsPanel();
 
@@ -2926,6 +2927,7 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         `Loaded ${filteredResidents.length} resident${filteredResidents.length === 1 ? "" : "s"} and ${filteredAttempts.length} recent attempt${filteredAttempts.length === 1 ? "" : "s"} for ${this.getCohortLabel(this.selectedCohortId)} in ${this.getSelectedOrganizationLabel()}.`;
 
       this.renderFacultyRoster(filteredResidents);
+      this.renderGeneralFeedbackResidentOptions();
       this.renderFacultyRecentAttempts(filteredAttempts, filteredResidents);
       detailPanel.innerHTML = `
         <div class="diagnostic-history-empty-state">
@@ -3350,6 +3352,202 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
     }
   },
 
+    getVisibleRosterResidents() {
+    return Array.isArray(this.latestFacultyIndexData?.roster?.residents)
+      ? this.latestFacultyIndexData.roster.residents
+      : [];
+  },
+
+  renderGeneralFeedbackResidentOptions() {
+    const residentSelect = document.getElementById("generalFeedbackResidentSelect");
+    const cohortSelect = document.getElementById("generalFeedbackCohortSelect");
+    const scopeSelect = document.getElementById("generalFeedbackScopeSelect");
+    const residentLabel = document.getElementById("generalFeedbackResidentLabel");
+    const cohortLabel = document.getElementById("generalFeedbackCohortLabel");
+
+    if (!residentSelect || !cohortSelect || !scopeSelect || !residentLabel || !cohortLabel) return;
+
+    const allResidents = this.getVisibleRosterResidents();
+    const cohorts = Array.isArray(this.latestOrganizationCohorts)
+      ? this.latestOrganizationCohorts.filter((cohort) => cohort.status !== "archived")
+      : [];
+
+    const previousCohortValue = cohortSelect.value || "";
+    const previousResidentValue = residentSelect.value || "";
+    const isCohortScope = scopeSelect.value === "cohort";
+
+    residentLabel.classList.toggle("hidden", isCohortScope);
+    cohortLabel.classList.remove("hidden");
+
+    if (cohorts.length) {
+      cohortSelect.innerHTML = `
+        <option value="">Select cohort</option>
+        ${cohorts.map((cohort) => `
+          <option value="${this.escapeAttribute(cohort.cohortId)}">
+            ${this.escapeHtml(cohort.label)}
+          </option>
+        `).join("")}
+      `;
+
+      if (
+        previousCohortValue &&
+        cohorts.some((cohort) => cohort.cohortId === previousCohortValue)
+      ) {
+        cohortSelect.value = previousCohortValue;
+      } else if (
+        this.selectedCohortId &&
+        this.selectedCohortId !== "all" &&
+        cohorts.some((cohort) => cohort.cohortId === this.selectedCohortId)
+      ) {
+        cohortSelect.value = this.selectedCohortId;
+      }
+    } else {
+      cohortSelect.innerHTML = `<option value="">No active cohorts available</option>`;
+    }
+
+    const selectedMessagingCohortId = cohortSelect.value || "";
+
+    if (isCohortScope) {
+      residentSelect.innerHTML = `<option value="">Not needed for cohort message</option>`;
+      return;
+    }
+
+    const residents = selectedMessagingCohortId
+      ? allResidents.filter((resident) =>
+          (resident.cohortId || "unassigned") === selectedMessagingCohortId
+        )
+      : allResidents;
+
+    if (!selectedMessagingCohortId) {
+      residentSelect.innerHTML = `<option value="">Choose a cohort first</option>`;
+      return;
+    }
+
+    if (!residents.length) {
+      residentSelect.innerHTML = `<option value="">No current residents in this cohort</option>`;
+      return;
+    }
+
+    residentSelect.innerHTML = `
+      <option value="">Select resident</option>
+      ${residents.map((resident) => `
+        <option value="${this.escapeAttribute(resident.residentId)}">
+          ${this.escapeHtml(resident.residentName || resident.residentEmail || resident.residentId)}
+        </option>
+      `).join("")}
+    `;
+
+    if (
+      previousResidentValue &&
+      residents.some((resident) => resident.residentId === previousResidentValue)
+    ) {
+      residentSelect.value = previousResidentValue;
+    }
+  },
+
+  async sendGeneralFeedbackFromUI() {
+    const scopeSelect = document.getElementById("generalFeedbackScopeSelect");
+    const residentSelect = document.getElementById("generalFeedbackResidentSelect");
+    const cohortSelect = document.getElementById("generalFeedbackCohortSelect");
+    const messageInput = document.getElementById("generalFeedbackMessageInput");
+    const status = document.getElementById("generalFeedbackStatus");
+    const button = document.getElementById("sendGeneralFeedbackBtn");
+
+    if (!scopeSelect || !residentSelect || !cohortSelect || !messageInput || !status || !button) return;
+
+    const scope = scopeSelect.value || "resident";
+    const residentId = residentSelect.value || "";
+    const feedbackCohortId = cohortSelect.value || "";
+    const message = messageInput.value.trim();
+
+    if (!this.hasValidBackendSession()) {
+      status.textContent = "Sign in before sending feedback.";
+      status.className = "dashboard-card-note general-feedback-status error";
+      return;
+    }
+
+    if (!this.selectedOrganizationId) {
+      status.textContent = "Select an organization before sending feedback.";
+      status.className = "dashboard-card-note general-feedback-status error";
+      return;
+    }
+
+    if (!feedbackCohortId || feedbackCohortId === "all") {
+      status.textContent =
+        scope === "cohort"
+          ? "Choose a cohort before sending cohort feedback."
+          : "Choose a cohort before selecting an individual resident.";
+      status.className = "dashboard-card-note general-feedback-status error";
+      return;
+    }
+
+    if (scope === "resident" && !residentId) {
+      status.textContent = "Choose a resident before sending individual feedback.";
+      status.className = "dashboard-card-note general-feedback-status error";
+      residentSelect.focus();
+      return;
+    }
+
+    if (!message) {
+      status.textContent = "Enter feedback before sending.";
+      status.className = "dashboard-card-note general-feedback-status error";
+      messageInput.focus();
+      return;
+    }
+
+    if (scope === "cohort") {
+      const selectedCohort = (this.latestOrganizationCohorts || []).find((cohort) =>
+        cohort.cohortId === feedbackCohortId
+      );
+
+      const confirmed = window.confirm(
+        `Send this feedback to every current resident in ${selectedCohort?.label || "the selected cohort"}?`
+      );
+
+      if (!confirmed) return;
+    }
+
+    status.textContent = "Sending feedback...";
+    status.className = "dashboard-card-note general-feedback-status";
+    button.disabled = true;
+
+    try {
+      const data = await this.apiFetch("saveGeneralFacultyFeedback", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: this.selectedOrganizationId,
+          cohortId: feedbackCohortId,
+          residentId,
+          scope,
+          message
+        })
+      });
+
+      messageInput.value = "";
+
+      if (scope === "resident") {
+        const resident = this.getVisibleRosterResidents().find((item) =>
+          item.residentId === residentId
+        );
+
+        if (resident) {
+          await this.refreshResidentProfileFeedbackHistory(resident);
+        }
+      }
+
+      status.textContent = data.message || "Feedback sent.";
+      status.className = "dashboard-card-note general-feedback-status success";
+
+      console.log("[Resident Ready Faculty] General feedback sent.", data);
+    } catch (error) {
+      console.warn("[Resident Ready Faculty] Could not send general feedback.", error);
+      status.textContent = error.message || "Could not send feedback.";
+      status.className = "dashboard-card-note general-feedback-status error";
+    } finally {
+      button.disabled = false;
+    }
+  },
+
 
   renderFacultyRoster(residents = []) {
     const rosterList = document.getElementById("facultyRosterList");
@@ -3583,6 +3781,14 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
   },
 
   getFacultyFeedbackContextLabel(feedback = {}) {
+    if (feedback.contextType === "cohort") {
+      return `Cohort Feedback · ${feedback.cohortLabel || "Selected cohort"}`;
+    }
+
+    if (feedback.contextType === "general") {
+      return "General Resident Feedback";
+    }
+
     if (feedback.assignmentTitle) {
       return `${feedback.assignmentTitle} · ${feedback.attemptScore ?? "--"}%`;
     }
@@ -4202,6 +4408,28 @@ mergeCohortLists(primaryCohorts = [], fallbackCohorts = []) {
         this.signOut();
       });
     }
+
+    const generalFeedbackScopeSelect = document.getElementById("generalFeedbackScopeSelect");
+    if (generalFeedbackScopeSelect) {
+      generalFeedbackScopeSelect.addEventListener("change", () => {
+        this.renderGeneralFeedbackResidentOptions();
+      });
+    }
+
+    const generalFeedbackCohortSelect = document.getElementById("generalFeedbackCohortSelect");
+    if (generalFeedbackCohortSelect) {
+      generalFeedbackCohortSelect.addEventListener("change", () => {
+        this.renderGeneralFeedbackResidentOptions();
+      });
+    }
+
+    const sendGeneralFeedbackBtn = document.getElementById("sendGeneralFeedbackBtn");
+    if (sendGeneralFeedbackBtn) {
+      sendGeneralFeedbackBtn.addEventListener("click", () => {
+        this.sendGeneralFeedbackFromUI();
+      });
+    }
+
 
     const rosterList = document.getElementById("facultyRosterList");
     if (rosterList) {
